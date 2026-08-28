@@ -4,6 +4,7 @@ import { makeBackup, restoreBackup, backupFilename } from '../lib/backup.js';
 import {
   syncConfigured, currentAccount, syncError, signIn, signOutOfSync, onAccountChange,
 } from '../lib/sync.js';
+import { ollamaModels } from '../lib/import/ollama.js';
 import { applyTheme, PALETTE_KEYS, SPINE_KEYS, PRESETS, WOODS, FACES, FACE_LABELS } from '../lib/theme.js';
 
 /* Settings.
@@ -159,6 +160,9 @@ export function renderSettings(host) {
     ]),
   );
 
+  // --- reading recipes with a model ----------------------------------------
+  sheet.append(ollamaCard(set, settings));
+
   // --- backup --------------------------------------------------------------
   sheet.append(
     card('Backup', 'Everything on the desk in one file, photographs included. Restoring replaces what is here.', [
@@ -245,6 +249,63 @@ function syncCard() {
   }).observe(document.body, { childList: true, subtree: true });
 
   return card('Your account', null, [body]);
+}
+
+/* --- Ollama -------------------------------------------------------------------- */
+
+/* A model on your own Mac: free, private, offline, no key. It cannot reach the
+   iPad — an HTTPS page may not call http://localhost from another device, and
+   Safari blocks it even locally — so this is Chrome on the Mac. Everything
+   else works everywhere. */
+function ollamaCard(set, settings) {
+  const body = el('div', {});
+  const ollama = settings.ollama || {};
+
+  const url = el('input', {
+    type: 'text',
+    value: ollama.url || 'http://localhost:11434',
+    onChange: (event) => set({ ollama: { ...store.state.settings.ollama, url: event.target.value.trim() } }),
+  });
+
+  const model = el('input', {
+    type: 'text',
+    value: ollama.model || 'gemma3:12b',
+    onChange: (event) => set({ ollama: { ...store.state.settings.ollama, model: event.target.value.trim() } }),
+  });
+
+  const state = el('p', { class: 'settings-sub' });
+
+  async function check() {
+    state.textContent = 'Looking for Ollama…';
+    const models = await ollamaModels(store.state.settings.ollama?.url);
+    if (!models.length) {
+      state.className = 'settings-sub sync-error';
+      state.textContent = 'No answer. Start Ollama, and launch it with OLLAMA_ORIGINS set to this site — the README has the command.';
+      return;
+    }
+    state.className = 'settings-sub is-ready';
+    state.textContent = `Answering. Installed: ${models.join(', ')}`;
+  }
+
+  body.append(
+    row('Use a local model', segmented(
+      [{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }],
+      ollama.enabled ? 'on' : 'off',
+      (id) => set({ ollama: { ...store.state.settings.ollama, enabled: id === 'on' } }),
+    )),
+    el('div', { class: 'field' }, [el('span', { class: 'label', text: 'Address' }), url]),
+    el('div', { class: 'field' }, [el('span', { class: 'label', text: 'Model' }), model]),
+    el('div', { class: 'field-row' }, [
+      el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Check the connection', onClick: check }),
+    ]),
+    state,
+  );
+
+  return card(
+    'Reading recipes with a model',
+    'Ollama runs on this Mac: free, private, and offline. It cannot be reached from the iPad, so screenshots and pasted text are read here; links to sites that publish their recipe as data work on every device without it.',
+    [body],
+  );
 }
 
 /* --- the settings kit ------------------------------------------------------ */

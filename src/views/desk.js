@@ -20,7 +20,8 @@ export function renderDesk(host) {
         el('small', { text: `Good to see you, ${chefName(store.state.settings.profile)}.` }),
       ]),
       el('div', { class: 'scene-actions' }, [
-        iconButton('inbox', 'Bring in a shared recipe', { onClick: () => importMarkdown() }),
+        iconButton('inbox', 'Bring in a shared .md recipe', { onClick: () => importMarkdown() }),
+        iconLink('sparkle', 'Import from a link, screenshot or text', '#/import'),
         iconLink('settings', 'Settings', '#/settings'),
       ]),
     ]),

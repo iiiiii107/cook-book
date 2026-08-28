@@ -1,0 +1,9 @@
+# The page fetcher for importing a recipe from a link. See worker/fetch-proxy.js.
+#
+#   npx wrangler deploy
+#
+# then put the URL it prints into the VITE_FETCH_PROXY repository secret.
+
+name = "cook-book-fetch"
+main = "worker/fetch-proxy.js"
+compatibility_date = "2026-01-01"

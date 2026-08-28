@@ -532,3 +532,100 @@ body[data-editing='1'] .recipe-steps li:empty::after {
 }
 
 .sync-error { color: var(--tag-5); }
+
+/* --- bringing a recipe in ------------------------------------------------------ */
+
+.import-panel {
+  width: min(100%, 720px);
+  margin: 0 auto 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.import-section {
+  background: var(--paper);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: 0 12px 28px -22px var(--shadow-2);
+}
+.import-section h3 { font-size: calc(17px * var(--text-scale)); margin-bottom: 9px; }
+.import-section .settings-sub { margin: 9px 0 0; }
+
+.import-row { display: flex; gap: 8px; align-items: center; }
+.import-row input[type='url'] { flex: 1; }
+.import-section textarea { font-family: var(--font-body); resize: vertical; }
+
+/* This line sits on the wood, not on paper, so it needs the on-desk treatment
+   rather than the muted colour that reads well on a page. */
+.import-status { text-align: center; }
+.import-status .settings-sub {
+  margin: 0;
+  color: var(--on-desk-dim);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .45);
+}
+.import-status .is-ready { color: #B6D3A8; }
+.import-status .sync-error { color: #F0B4A8; }
+.is-ready { color: var(--tag-2); }
+
+.import-review {
+  background: var(--paper);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: 0 14px 32px -22px var(--shadow-2);
+}
+.import-review h3 {
+  font-size: calc(21px * var(--text-scale));
+  font-family: var(--font-display);
+}
+.import-review .label { display: block; margin: 16px 0 6px; color: var(--accent); }
+.import-meta { font-size: calc(12px * var(--text-scale)); color: var(--muted); margin: 2px 0 0; }
+
+.import-list { margin: 0; padding-left: 1.3em; font-size: calc(13px * var(--text-scale)); }
+.import-list li { padding: 2px 0; line-height: 1.45; }
+.import-notes {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: calc(13px * var(--text-scale));
+  color: var(--ink);
+  margin: 14px 0 0;
+  white-space: pre-wrap;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair);
+}
+.import-book {
+  padding: 6px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hair-strong);
+  background: transparent;
+  color: var(--ink);
+}
+
+/* The clipboard offer: a quiet bar, never a dialog — you did not ask for it. */
+.clip-offer {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--hair-strong);
+  box-shadow: 0 14px 34px -18px var(--shadow-2);
+  font-size: calc(12.5px * var(--text-scale));
+  animation: rise .22s ease;
+}

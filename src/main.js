@@ -10,6 +10,7 @@ import { renderBook } from './views/book.js';
 import { renderRecipe } from './views/recipe.js';
 import { renderSettings } from './views/settings.js';
 import { renderPlan } from './views/plan.js';
+import { renderImport } from './views/import.js';
 import { renderCook } from './views/cook.js';
 
 /* Hash routing, as in the other apps: GitHub Pages serves one file, so a
@@ -22,6 +23,7 @@ const ROUTES = [
   { pattern: /^\/recipe\/([^/]+)$/, view: 'recipe', render: renderRecipe },
   { pattern: /^\/cook\/([^/]+)$/, view: 'cook', render: renderCook },
   { pattern: /^\/plan$/, view: 'plan', render: renderPlan },
+  { pattern: /^\/import$/, view: 'import', render: renderImport },
   { pattern: /^\/settings$/, view: 'settings', render: renderSettings },
 ];
 
@@ -184,6 +186,51 @@ async function boot() {
   go();
 
   registerServiceWorker(import.meta.env.BASE_URL);
+  offerClipboard();
+}
+
+/* If you have copied a recipe somewhere else, the app can notice and offer to
+   read it — which is the whole of the "share to the app" story on iOS, where a
+   web app cannot register as a share target however much one would like it to.
+   Reading the clipboard needs a gesture and permission, so this only ever
+   looks after you have clicked, and never asks twice in a session. */
+function offerClipboard() {
+  let asked = false;
+
+  document.addEventListener('pointerdown', async function look() {
+    if (asked || !navigator.clipboard?.readText) return;
+    asked = true;
+    document.removeEventListener('pointerdown', look);
+
+    let text = '';
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      return;   // no permission, and that is a perfectly reasonable answer
+    }
+
+    const { looksLikeRecipe } = await import('./lib/import/index.js');
+    if (!looksLikeRecipe(text)) return;
+
+    const bar = el('div', { class: 'clip-offer' }, [
+      el('span', { text: 'That looks like a recipe on your clipboard.' }),
+      el('button', {
+        class: 'btn btn-sm',
+        type: 'button',
+        text: 'Bring it in',
+        onClick: () => {
+          bar.remove();
+          location.hash = `#/import?text=${encodeURIComponent(text.slice(0, 6000))}`;
+        },
+      }),
+      el('button', {
+        class: 'btn btn-quiet btn-sm', type: 'button', text: 'No',
+        onClick: () => bar.remove(),
+      }),
+    ]);
+    document.body.append(bar);
+    setTimeout(() => bar.remove(), 15000);
+  }, { once: false });
 }
 
 boot();
