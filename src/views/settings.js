@@ -1,6 +1,9 @@
-import { el, toast, chefName, iconLink } from '../lib/dom.js';
+import { el, clear, toast, chefName, iconLink } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { makeBackup, restoreBackup, backupFilename } from '../lib/backup.js';
+import {
+  syncConfigured, currentAccount, syncError, signIn, signOutOfSync, onAccountChange,
+} from '../lib/sync.js';
 import { applyTheme, PALETTE_KEYS, SPINE_KEYS, PRESETS, WOODS, FACES, FACE_LABELS } from '../lib/theme.js';
 
 /* Settings.
@@ -43,6 +46,9 @@ export function renderSettings(host) {
       el('div', { class: 'field' }, [el('span', { class: 'label', text: 'Name' }), name]),
     ]),
   );
+
+  // --- syncing between devices ---------------------------------------------
+  sheet.append(syncCard());
 
   // --- light ---------------------------------------------------------------
   sheet.append(
@@ -162,6 +168,83 @@ export function renderSettings(host) {
       ]),
     ]),
   );
+}
+
+/* --- signing in -------------------------------------------------------------- */
+
+/* Everything lands under your own user id, and the rules make that the only
+   place you can read or write. Signing in is also what fills in your name, so
+   the app can stop calling you "Chef" and nothing else. */
+function syncCard() {
+  const body = el('div', { class: 'sync-body' });
+
+  function paint() {
+    clear(body);
+
+    if (!syncConfigured()) {
+      body.append(
+        el('p', {
+          class: 'settings-sub',
+          text: 'This copy of the app was built without a Firebase project, so everything stays in this browser. Add VITE_FIREBASE_CONFIG as a repository secret to turn syncing on.',
+        }),
+      );
+      return;
+    }
+
+    const account = currentAccount();
+    const error = syncError();
+
+    if (account) {
+      body.append(
+        el('div', { class: 'sync-account' }, [
+          account.photo && el('img', { class: 'sync-avatar', src: account.photo, alt: '' }),
+          el('div', {}, [
+            el('strong', { text: account.name || 'Signed in' }),
+            el('div', { class: 'settings-sub', text: account.email || '' }),
+          ]),
+          el('button', {
+            class: 'btn btn-secondary btn-sm',
+            type: 'button',
+            text: 'Sign out',
+            onClick: () => signOutOfSync().catch(() => toast('Could not sign out.')),
+          }),
+        ]),
+      );
+      body.append(el('p', {
+        class: 'settings-sub',
+        text: error || 'Your cookbooks, photographs and plan follow you to every device you sign in on.',
+      }));
+      return;
+    }
+
+    body.append(
+      el('p', {
+        class: 'settings-sub',
+        text: 'Sign in to keep your cookbooks on every device. Everything stays private to your account.',
+      }),
+      el('button', {
+        class: 'btn btn-sm',
+        type: 'button',
+        text: 'Sign in with Google',
+        onClick: () => signIn().catch((err) => {
+          console.warn('Sign-in failed.', err);
+          toast('Sign-in did not go through.');
+        }),
+      }),
+      error && el('p', { class: 'settings-sub sync-error', text: error }),
+    );
+  }
+
+  paint();
+  const off = onAccountChange(paint);
+  // The settings screen is rebuilt on every route change; let go with it.
+  new MutationObserver((records, observer) => {
+    if (document.contains(body)) return;
+    off();
+    observer.disconnect();
+  }).observe(document.body, { childList: true, subtree: true });
+
+  return card('Your account', null, [body]);
 }
 
 /* --- the settings kit ------------------------------------------------------ */

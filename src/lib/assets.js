@@ -46,15 +46,39 @@ async function tx(mode, fn) {
    its page is turned back to, and a revoked URL renders as a broken image. */
 const urls = new Map();
 
+/* The other half, when signed in: Firebase Storage. IndexedDB stays the first
+   place looked, so a photo already on this device costs nothing; the cloud is
+   only reached for one that is not here yet. */
+let cloud = null;
+
 export const assets = {
+  /** @param {{upload, download, remove}|null} next */
+  useCloud(next) {
+    cloud = next;
+  },
+
   async put(id, blob) {
     await tx('readwrite', (store) => store.put(blob, id));
     urls.delete(id);
+    // Uploading is deliberately not awaited: adding a photograph should not
+    // wait on the network, and Storage retries on its own.
+    cloud?.upload(id, blob).catch((err) => console.warn('Photo did not upload.', err));
     return id;
   },
 
   async get(id) {
-    return tx('readonly', (store) => store.get(id));
+    const local = await tx('readonly', (store) => store.get(id));
+    if (local || !cloud) return local;
+
+    // Not on this device — another one added it. Fetch once and keep it.
+    try {
+      const blob = await cloud.download(id);
+      await tx('readwrite', (store) => store.put(blob, id));
+      return blob;
+    } catch (err) {
+      console.warn(`Photo ${id} is not on this device and could not be fetched.`, err);
+      return null;
+    }
   },
 
   /** A URL for <img src>. Cached, so repeated renders do not re-allocate. */
@@ -72,6 +96,7 @@ export const assets = {
     const url = urls.get(id);
     if (url) URL.revokeObjectURL(url);
     urls.delete(id);
+    cloud?.remove(id).catch(() => { /* already gone, or never went up */ });
   },
 
   async keys() {

@@ -3,6 +3,7 @@ import { el, svg, clear } from './lib/dom.js';
 import { store } from './lib/store.js';
 import { applyTheme, toggleLight } from './lib/theme.js';
 import { registerServiceWorker } from './lib/pwa.js';
+import { restoreSession, onAccountChange, currentAccount } from './lib/sync.js';
 
 import { renderDesk } from './views/desk.js';
 import { renderBook } from './views/book.js';
@@ -150,6 +151,21 @@ async function boot() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     applyTheme(store.state.settings);
     store.emit();
+  });
+
+  // Picking the session back up swaps the storage backend underneath, which
+  // the store hears about as an ordinary change. Signing in is once per device.
+  restoreSession().catch((err) => console.warn('Could not restore the session.', err));
+  onAccountChange(() => {
+    const account = currentAccount();
+    // The greeting comes from the account once there is one, without
+    // overwriting a name that was typed in by hand.
+    if (account?.name && !store.state.settings.profile?.name) {
+      store.updateSettings({
+        profile: { name: account.name, email: account.email || '' },
+      });
+    }
+    go();
   });
 
   window.addEventListener('hashchange', go);
