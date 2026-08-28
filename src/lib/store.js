@@ -1,7 +1,7 @@
 import { storage } from './storage.js';
 import { newBook, newRecipe } from './recipe.js';
 import { uid } from './dom.js';
-import { todayISO, addDays, startOfWeek } from './dates.js';
+import { prunePlan, planWindow } from './plan.js';
 
 const MEAL_IDS = ['breakfast', 'lunch', 'dinner'];
 
@@ -19,10 +19,9 @@ class Store extends EventTarget {
 
   async init() {
     this.state = await storage.load();
-    // Two weeks of paper on the desk and no more: last week and this one. A
-    // plan that kept every week you ever made would grow without limit and
-    // sync all of it, for a history nobody asked for.
-    if (this.prunePlan()) await storage.save(this.state);
+    // Three weeks and no more — see lib/plan.js. A plan that kept every week
+    // you ever made would grow without limit and sync all of it.
+    if (prunePlan(this.state.plan)) await storage.save(this.state);
     this.ready = true;
     storage.subscribe((incoming) => {
       this.state = incoming;
@@ -114,27 +113,9 @@ class Store extends EventTarget {
 
   // ---- the planning sheet -------------------------------------------------
 
-  /** The Monday of the oldest week worth keeping. */
-  oldestPlannedWeek() {
-    return startOfWeek(addDays(todayISO(), -7), 1);
-  }
-
-  /**
-   * Forget weeks older than last week. Future weeks are always kept — those
-   * were planned deliberately, and forgetting them would throw away work.
-   * @returns {boolean} whether anything was actually dropped
-   */
-  prunePlan() {
-    const cutoff = this.oldestPlannedWeek();
-    let changed = false;
-    // ISO dates compare correctly as plain strings, which is the whole reason
-    // dates are stored as 'YYYY-MM-DD' throughout.
-    for (const date of Object.keys(this.state.plan || {})) {
-      if (date >= cutoff) continue;
-      delete this.state.plan[date];
-      changed = true;
-    }
-    return changed;
+  /** The first and last dates the planning sheet covers. */
+  planWindow() {
+    return planWindow();
   }
 
   /** How many meals are planned across a run of days. */

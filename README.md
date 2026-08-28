@@ -200,11 +200,15 @@ thing that has burnt cannot come out.
 
 **The week rolls over on its own.** The plan is keyed by the actual date, so
 next Monday is simply a different key and starts blank — nothing is carried
-over and nothing needs resetting. Two sheets lie on the desk, this week and the
-one just gone; anything older is forgotten at boot by `store.prunePlan`, which
-is why ISO date strings are used throughout — they sort correctly as plain
-strings, so the cutoff is a string comparison. Weeks you planned *ahead* are
-never pruned: those were deliberate, and forgetting them would throw away work.
+over and nothing needs resetting. One sheet lies on the desk covering three
+weeks: the one just gone, the one we are in, and the one coming. Anything
+outside that window is forgotten at boot (`lib/plan.js`), which is why ISO date
+strings are used everywhere — they sort correctly as plain strings, so the
+window is a pair of string comparisons.
+
+That rule lives in its own module rather than inside the store so the tests can
+call it directly. A rule that deletes data should not be verified against a
+second copy of itself.
 
 **The shopping list** is the reason ingredients are stored parsed. Quantities
 only combine inside a family — millilitres and litres add, tablespoons and

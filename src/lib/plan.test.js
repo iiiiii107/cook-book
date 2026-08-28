@@ -1,63 +1,74 @@
 import { describe, it, expect } from 'vitest';
-import { todayISO, addDays, startOfWeek, weekLabel } from './dates.js';
+import { addDays, startOfWeek, weekLabel } from './dates.js';
+import { prunePlan, planWindow, weekStarts, withinWindow } from './plan.js';
 
-/* The pruning rule, exercised directly. It deletes data, so it is worth
-   pinning down exactly which weeks survive and which do not. */
-
-const MEAL_IDS = ['breakfast', 'lunch', 'dinner'];
-
-function prune(plan, today = todayISO()) {
-  const cutoff = startOfWeek(addDays(today, -7), 1);
-  const kept = {};
-  for (const [date, day] of Object.entries(plan)) {
-    if (date >= cutoff) kept[date] = day;
-  }
-  return kept;
-}
+/* The pruning rule deletes data, so it is worth pinning down exactly which
+   weeks survive. These call the real implementation — verifying a deletion
+   rule against a second copy of itself proves nothing. */
 
 const planOn = (...dates) =>
   Object.fromEntries(dates.map((d) => [d, { dinner: [{ id: 'x', text: 'something' }] }]));
 
-describe('pruning the plan', () => {
+const survivors = (plan, today) => {
+  const copy = structuredClone(plan);
+  prunePlan(copy, today);
+  return Object.keys(copy).sort();
+};
+
+describe('the three weeks the sheet covers', () => {
   const today = '2026-08-28';                 // a Friday
   const thisWeek = startOfWeek(today, 1);     // Monday 24 Aug
   const lastWeek = addDays(thisWeek, -7);     // Monday 17 Aug
-  const older = addDays(thisWeek, -14);       // Monday 10 Aug
   const nextWeek = addDays(thisWeek, 7);      // Monday 31 Aug
 
-  it('keeps this week', () => {
-    expect(Object.keys(prune(planOn(thisWeek), today))).toEqual([thisWeek]);
+  it('is last week, this week and next week', () => {
+    expect(weekStarts(today)).toEqual([lastWeek, thisWeek, nextWeek]);
   });
 
-  it('keeps last week — the second sheet on the desk', () => {
-    expect(Object.keys(prune(planOn(lastWeek), today))).toEqual([lastWeek]);
+  it('runs from last Monday to next Sunday', () => {
+    expect(planWindow(today)).toEqual({ first: lastWeek, last: addDays(nextWeek, 6) });
   });
 
-  it('keeps the whole of last week, right up to its last day', () => {
-    const sunday = addDays(lastWeek, 6);
-    expect(Object.keys(prune(planOn(sunday), today))).toEqual([sunday]);
+  it('knows what falls inside it', () => {
+    expect(withinWindow(lastWeek, today)).toBe(true);
+    expect(withinWindow(addDays(nextWeek, 6), today)).toBe(true);
+    expect(withinWindow(addDays(lastWeek, -1), today)).toBe(false);
+    expect(withinWindow(addDays(nextWeek, 7), today)).toBe(false);
+  });
+});
+
+describe('pruning the plan', () => {
+  const today = '2026-08-28';
+  const thisWeek = startOfWeek(today, 1);
+  const lastWeek = addDays(thisWeek, -7);
+  const nextWeek = addDays(thisWeek, 7);
+
+  it('keeps all three weeks', () => {
+    expect(survivors(planOn(lastWeek, thisWeek, nextWeek), today))
+      .toEqual([lastWeek, thisWeek, nextWeek].sort());
+  });
+
+  it('keeps the very edges — last Monday and next Sunday', () => {
+    const sunday = addDays(nextWeek, 6);
+    expect(survivors(planOn(lastWeek, sunday), today)).toEqual([lastWeek, sunday].sort());
   });
 
   it('forgets anything before last week', () => {
-    expect(prune(planOn(older), today)).toEqual({});
-    expect(prune(planOn(addDays(lastWeek, -1)), today)).toEqual({});
+    expect(survivors(planOn(addDays(lastWeek, -1), addDays(thisWeek, -35)), today)).toEqual([]);
   });
 
-  it('never forgets a week you planned ahead', () => {
-    expect(Object.keys(prune(planOn(nextWeek), today))).toEqual([nextWeek]);
-    expect(Object.keys(prune(planOn(addDays(thisWeek, 60)), today))).toEqual([addDays(thisWeek, 60)]);
+  it('forgets anything beyond next week', () => {
+    expect(survivors(planOn(addDays(nextWeek, 7), addDays(thisWeek, 60)), today)).toEqual([]);
   });
 
-  it('keeps exactly the two weeks and the future, out of a long history', () => {
-    const plan = planOn(
-      addDays(thisWeek, -35), addDays(thisWeek, -21), older,
-      lastWeek, thisWeek, nextWeek,
-    );
-    expect(Object.keys(prune(plan, today)).sort()).toEqual([lastWeek, thisWeek, nextWeek].sort());
+  it('reports whether it actually removed anything', () => {
+    expect(prunePlan(planOn(thisWeek), today)).toBe(false);
+    expect(prunePlan(planOn(addDays(thisWeek, -35)), today)).toBe(true);
   });
 
-  it('does not mind an empty plan', () => {
-    expect(prune({}, today)).toEqual({});
+  it('does not mind an empty plan, or none at all', () => {
+    expect(prunePlan({}, today)).toBe(false);
+    expect(prunePlan(undefined, today)).toBe(false);
   });
 });
 
@@ -73,18 +84,5 @@ describe('weekLabel', () => {
 
   it('gives dates once counting weeks stops helping', () => {
     expect(weekLabel(addDays(thisWeek, 21), today)).toMatch(/^Week of /);
-  });
-});
-
-describe('the shape the plan is stored in', () => {
-  it('sorts correctly as plain strings, which is what pruning relies on', () => {
-    const dates = ['2026-09-01', '2026-08-31', '2026-12-25', '2026-01-02'];
-    expect([...dates].sort()).toEqual(['2026-01-02', '2026-08-31', '2026-09-01', '2026-12-25']);
-  });
-
-  it('counts meals across a week', () => {
-    const plan = { '2026-08-24': { breakfast: [{}], dinner: [{}, {}] } };
-    const count = MEAL_IDS.reduce((n, m) => n + (plan['2026-08-24'][m] || []).length, 0);
-    expect(count).toBe(3);
   });
 });

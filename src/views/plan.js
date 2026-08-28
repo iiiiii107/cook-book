@@ -2,6 +2,7 @@ import { el, modal, toast, iconLink, iconButton, chefName } from '../lib/dom.js'
 import { store } from '../lib/store.js';
 import { todayISO, startOfWeek, addDays, formatShort, weekLabel, DAY_FULL, dayOfWeek } from '../lib/dates.js';
 import { MEALS, buildList, toMarkdown, listFilename } from '../lib/shopping.js';
+import { weekStarts } from '../lib/plan.js';
 import { formatAmount } from '../lib/units.js';
 import { sortRecipes } from '../lib/recipe.js';
 
@@ -16,23 +17,29 @@ import { sortRecipes } from '../lib/recipe.js';
    for why. */
 
 export function renderPlan(host, query) {
-  const start = query?.get('week') || startOfWeek(todayISO(), 1);
+  const asked = query?.get('week') || startOfWeek(todayISO(), 1);
+  // A link to a week the sheet no longer covers lands on this week rather
+  // than on a blank grid that cannot be navigated out of.
+  const start = weekStarts().includes(asked) ? asked : startOfWeek(todayISO(), 1);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
   const thisWeek = startOfWeek(todayISO(), 1);
-  const oldest = store.oldestPlannedWeek();
+  const weeks = weekStarts();
   const label = weekLabel(start);
 
   // The heading has to say which week this actually is. Always writing "This
   // week" while you are looking at November is worse than saying nothing.
   const actions = el('div', { class: 'scene-actions' }, [
     iconLink('desk', 'Back to the desk', '#/'),
+    // The sheet covers three weeks and stops. There is nothing behind last
+    // week and nothing beyond next, so the arrows say so rather than paging
+    // into empty weeks that would only be forgotten again.
     iconButton('chevronLeft', 'The week before', {
-      // There is nothing behind last week — it has been forgotten by design.
-      disabled: start <= oldest,
+      disabled: start <= weeks[0],
       onClick: () => { location.hash = `#/plan?week=${addDays(start, -7)}`; },
     }),
     iconButton('chevronRight', 'The week after', {
+      disabled: start >= weeks[weeks.length - 1],
       onClick: () => { location.hash = `#/plan?week=${addDays(start, 7)}`; },
     }),
   ]);

@@ -1,7 +1,7 @@
 import { el, modal, chefName, toast, iconLink, iconButton, hashUnit } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { importMarkdown } from './share.js';
-import { todayISO, startOfWeek, addDays, formatShort, weekLabel } from '../lib/dates.js';
+import { todayISO, startOfWeek, addDays, formatShort } from '../lib/dates.js';
 import { toHex, COVER_STYLES, PAPER_STOCKS } from '../lib/theme.js';
 import { stickerSvg, STICKER_IDS } from '../lib/stickers.js';
 
@@ -52,9 +52,7 @@ export function renderDesk(host) {
     ),
   );
 
-  const thisWeek = startOfWeek(todayISO(), 1);
-  row.append(planSheet(addDays(thisWeek, -7), { past: true }));
-  row.append(planSheet(thisWeek));
+  row.append(planSheet());
   host.append(row);
 
   if (!books.length) {
@@ -119,38 +117,30 @@ function bookCard(book) {
   return card;
 }
 
-/* Two sheets of paper, and no more: this week, and the one just gone.
-
-   A week rolls over on its own — the plan is keyed by the actual date, so next
-   Monday is simply a different key and starts blank. Last week's sheet stays
-   on the desk until it in turn becomes the week before that, and is then
-   forgotten (see store.prunePlan). */
-function weekDates(start) {
-  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-}
-
-function planSheet(start, { past = false } = {}) {
-  const dates = weekDates(start);
+/* One sheet on the desk, covering three weeks: the one just gone, the one we
+   are in, and the one coming. The week rolls over on its own — the plan is
+   keyed by the actual date, so next Monday is simply a different key and
+   starts blank. */
+function planSheet() {
+  const start = startOfWeek(todayISO(), 1);
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const count = store.plannedCount(dates);
-  const label = weekLabel(start);
-
-  const summary = count
-    ? `${count} ${count === 1 ? 'meal' : 'meals'} ${past ? 'cooked' : 'planned'}`
-    : past
-      ? 'Nothing was written down'
-      : 'Plan the meals, then take the shopping list with you.';
 
   return el(
     'button',
     {
-      class: `plan-sheet${past ? ' is-past' : ''}`,
+      class: 'plan-sheet',
       type: 'button',
-      style: scatter(past ? 'last-week-sheet' : 'the-planning-sheet'),
-      onClick: () => { location.hash = `#/plan?week=${start}`; },
+      style: scatter('the-planning-sheet'),
+      onClick: () => { location.hash = '#/plan'; },
     },
     [
-      el('h3', { text: label }),
-      el('p', { text: summary }),
+      el('h3', { text: 'This week' }),
+      el('p', {
+        text: count
+          ? `${count} ${count === 1 ? 'meal' : 'meals'} planned. Last week and next are on the back.`
+          : 'Plan the meals, then take the shopping list with you.',
+      }),
       el('span', { class: 'sheet-dates', text: `${formatShort(dates[0])} – ${formatShort(dates[6])}` }),
     ],
   );

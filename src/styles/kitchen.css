@@ -354,13 +354,6 @@ body[data-cooking='1'] .recipe-heading { font-size: calc(11px * var(--text-scale
   .sheet { overflow-x: auto; }
 }
 
-/* Last week's sheet sits behind this week's — still there to look at, a little
-   further from your hand. */
-.plan-sheet.is-past {
-  opacity: .72;
-  filter: saturate(.9);
-}
-.plan-sheet.is-past:hover { opacity: 1; }
 
 .sheet-dates {
   position: absolute;
