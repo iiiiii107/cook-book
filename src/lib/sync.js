@@ -243,7 +243,11 @@ export function createCloudStorage(uid) {
     const { firestore, db } = await firebase();
     return {
       f: firestore,
-      state: firestore.doc(db, 'users', uid, 'app', 'state'),
+      // 'cookbook', not 'state'. All three apps share one Firebase project,
+      // and 10-minutes-to-spare already owns users/{uid}/app/state — writing
+      // there would silently overwrite the habit tracker on first sign-in.
+      // calendartospare uses 'calendar' for the same reason.
+      state: firestore.doc(db, 'users', uid, 'app', 'cookbook'),
       recipes: firestore.collection(db, 'users', uid, 'recipes'),
     };
   }
