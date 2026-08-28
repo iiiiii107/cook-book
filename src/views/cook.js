@@ -1,9 +1,10 @@
-import { el, icon, iconButton, strikeSvg, toast, modal } from '../lib/dom.js';
+import { el, iconButton, strikeSvg, toast, modal } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { createPagedSpread } from '../lib/paginate.js';
 import { scaleIngredients, formatIngredient, totalTime } from '../lib/recipe.js';
 import { findTimers, formatClock } from '../lib/timers.js';
 import { mountDecorations } from './customise.js';
+import { mountSpreadControls } from './spread.js';
 import { buildFlow } from './recipe.js';
 
 /* Cook mode.
@@ -107,26 +108,18 @@ export function renderCook(host, recipeId) {
   stage.append(spread);
   host.append(stage);
 
-  const back = el('button', {
-    class: 'turn turn-back', type: 'button', title: 'Previous page', 'aria-label': 'Previous page',
-  }, [icon('chevronLeft')]);
-  const next = el('button', {
-    class: 'turn turn-next', type: 'button', title: 'Next page', 'aria-label': 'Next page',
-  }, [icon('chevronRight')]);
-
   const scrim = el('div', { class: 'cook-scrim', 'aria-hidden': 'true' });
 
+  let controls;
   const paged = createPagedSpread({
     host: spread,
     onChange: (api) => {
-      back.disabled = api.spread === 0;
-      next.disabled = api.spread >= api.spreadCount - 1;
+      controls?.update(api);
       api.onSpreadChange?.();
     },
   });
-  back.addEventListener('click', () => paged.back());
-  next.addEventListener('click', () => paged.next());
-  spread.append(back, next, scrim);
+  controls = mountSpreadControls({ spread, paged });
+  spread.append(scrim);
 
   let drawing = false;
   const deco = mountDecorations({
@@ -252,16 +245,8 @@ export function renderCook(host, recipeId) {
 
   draw();
 
-  // The recipe is the whole world here; arrow keys move through the method.
-  const onKey = (event) => {
-    if (event.key === 'ArrowRight') paged.next();
-    if (event.key === 'ArrowLeft') paged.back();
-  };
-  document.addEventListener('keydown', onKey);
-
   const observer = new MutationObserver(() => {
     if (document.contains(spread)) return;
-    document.removeEventListener('keydown', onKey);
     window.removeEventListener('beforeunload', guard);
     wake.release();
     delete document.body.dataset.cooking;

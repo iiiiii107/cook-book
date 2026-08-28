@@ -1,5 +1,6 @@
-import { el, modal, chefName, toast, iconLink, hashUnit } from '../lib/dom.js';
+import { el, modal, chefName, toast, iconLink, iconButton, hashUnit } from '../lib/dom.js';
 import { store } from '../lib/store.js';
+import { importMarkdown } from './share.js';
 import { todayISO, startOfWeek, addDays } from '../lib/dates.js';
 import { toHex, COVER_STYLES, PAPER_STOCKS } from '../lib/theme.js';
 import { stickerSvg, STICKER_IDS } from '../lib/stickers.js';
@@ -19,6 +20,7 @@ export function renderDesk(host) {
         el('small', { text: `Good to see you, ${chefName(store.state.settings.profile)}.` }),
       ]),
       el('div', { class: 'scene-actions' }, [
+        iconButton('inbox', 'Bring in a shared recipe', { onClick: () => importMarkdown() }),
         iconLink('settings', 'Settings', '#/settings'),
       ]),
     ]),

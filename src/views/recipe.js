@@ -1,9 +1,11 @@
-import { el, clear, icon, iconLink, iconButton } from '../lib/dom.js';
+import { el, clear, iconLink, iconButton } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { createPagedSpread } from '../lib/paginate.js';
 import { formatIngredient, totalTime } from '../lib/recipe.js';
 import { attachEditor } from './recipe-edit.js';
 import { mountDecorations, decorationTray } from './customise.js';
+import { mountSpreadControls } from './spread.js';
+import { shareRecipe } from './share.js';
 
 /* A recipe, on paper.
 
@@ -37,54 +39,15 @@ export function renderRecipe(host, recipeId, query) {
   stage.append(spread);
   host.append(stage);
 
-  const folio = el('span', { class: 'folio' });
-  const back = el('button', {
-    class: 'turn turn-back', type: 'button', title: 'Previous page',
-    'aria-label': 'Previous page',
-  }, [icon('chevronLeft')]);
-  const next = el('button', {
-    class: 'turn turn-next', type: 'button', title: 'Next page',
-    'aria-label': 'Next page',
-  }, [icon('chevronRight')]);
-
+  let controls;
   const paged = createPagedSpread({
     host: spread,
     onChange: (api) => {
-      const left = api.spread * api.perView + 1;
-      const right = Math.min(left + api.perView - 1, api.pageCount);
-      folio.textContent =
-        api.pageCount <= 1
-          ? 'one page'
-          : left === right
-            ? `page ${left} of ${api.pageCount}`
-            : `pages ${left}–${right} of ${api.pageCount}`;
-      back.disabled = api.spread === 0;
-      next.disabled = api.spread >= api.spreadCount - 1;
+      controls?.update(api);
       api.onSpreadChange?.();
     },
   });
-
-  back.addEventListener('click', () => paged.back());
-  next.addEventListener('click', () => paged.next());
-  spread.append(back, next, el('div', { class: 'page-nav' }, [folio]));
-
-  // Swiping turns the page too — on the iPad that is the natural gesture, and
-  // the arrows are small on purpose.
-  let swipeFrom = null;
-  spread.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'mouse' || event.target.isContentEditable) return;
-    swipeFrom = { x: event.clientX, y: event.clientY };
-  });
-  spread.addEventListener('pointerup', (event) => {
-    if (!swipeFrom) return;
-    const dx = event.clientX - swipeFrom.x;
-    const dy = event.clientY - swipeFrom.y;
-    swipeFrom = null;
-    // Horizontal, decisive, and not just a slow drag down the page.
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-    if (dx < 0) paged.next();
-    else paged.back();
-  });
+  controls = mountSpreadControls({ spread, paged });
 
   buildFlow(paged.flow, recipe, editing);
   paged.refresh();
@@ -154,6 +117,7 @@ function header(recipe, book, editing, decorating) {
           location.hash = `#/recipe/${recipe.id}?deco=1`;
         },
       }),
+      iconButton('share', 'Share this recipe', { onClick: () => shareRecipe(recipe) }),
       iconButton('flame', 'Cook this', {
         primary: true,
         onClick: () => {
@@ -185,7 +149,15 @@ function header(recipe, book, editing, decorating) {
  */
 export function buildFlow(flow, recipe, editing) {
   clear(flow);
+  buildRecipeBody(flow, recipe, editing);
+}
 
+/**
+ * The recipe itself, appended to whatever it is given. Kept separate from
+ * buildFlow so the cookbook can lay several recipes into one continuous flow
+ * without each of them clearing the ones before it.
+ */
+export function buildRecipeBody(flow, recipe, editing) {
   flow.append(
     el('h2', {
       class: 'recipe-title',

@@ -1,6 +1,6 @@
 import { el, toast, chefName, iconLink } from '../lib/dom.js';
 import { store } from '../lib/store.js';
-import { storage } from '../lib/storage.js';
+import { makeBackup, restoreBackup, backupFilename } from '../lib/backup.js';
 import { applyTheme, PALETTE_KEYS, SPINE_KEYS, PRESETS, WOODS, FACES, FACE_LABELS } from '../lib/theme.js';
 
 /* Settings.
@@ -155,10 +155,10 @@ export function renderSettings(host) {
 
   // --- backup --------------------------------------------------------------
   sheet.append(
-    card('Backup', 'A plain JSON copy of everything except photographs. Photographs join the backup when they arrive.', [
+    card('Backup', 'Everything on the desk in one file, photographs included. Restoring replaces what is here.', [
       el('div', { class: 'field-row' }, [
-        el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Export', onClick: exportBackup }),
-        el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Import', onClick: importBackup }),
+        el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Save a backup', onClick: exportBackup }),
+        el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Restore', onClick: importBackup }),
       ]),
     ]),
   );
@@ -208,31 +208,41 @@ function currentColour(id) {
 /* --- backup ----------------------------------------------------------------- */
 
 async function exportBackup() {
-  const json = await storage.exportAll();
-  const stamp = new Date().toISOString().slice(0, 10);
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  const link = el('a', { href: url, download: `cook-book-${stamp}.json` });
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  toast('Backup saved.');
+  toast('Packing everything up…');
+  try {
+    const blob = await makeBackup();
+    download(blob, backupFilename());
+    toast('Backup saved.');
+  } catch (error) {
+    console.warn('Could not build the backup.', error);
+    toast('The backup could not be made.');
+  }
 }
 
 function importBackup() {
-  const input = el('input', { type: 'file', accept: 'application/json,.json' });
+  const input = el('input', { type: 'file', accept: '.zip,.json,application/zip,application/json' });
   input.addEventListener('change', async () => {
     const file = input.files?.[0];
     if (!file) return;
     // eslint-disable-next-line no-alert
     if (!confirm('Replace everything on the desk with this backup?')) return;
     try {
-      await storage.importAll(await file.text());
+      const counts = await restoreBackup(file);
       applyTheme(store.state.settings);
-      toast('Backup restored.');
-    } catch {
+      toast(`Restored ${counts.recipes} recipes and ${counts.photos} photographs.`);
+    } catch (error) {
+      console.warn('Could not read that backup.', error);
       toast('That file could not be read.');
     }
   });
   input.click();
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = el('a', { href: url, download: filename });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }

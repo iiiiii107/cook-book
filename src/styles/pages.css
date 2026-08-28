@@ -460,3 +460,53 @@ body[data-editing='1'] .recipe-steps li:empty::after {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* --- the book as one continuous flow ----------------------------------------- */
+/* The cover and the index take exactly one leaf each: a block the full height
+   of a page fills its column, and the break sends whatever follows to the next
+   one. Every recipe then opens on a page of its own — which puts the first of
+   them on page three, the left-hand leaf, where a cookbook would put it. */
+
+.fixed-page {
+  height: 100%;
+  break-after: column;
+  break-inside: avoid-column;
+  display: flex;
+  flex-direction: column;
+}
+
+.recipe-block {
+  break-before: column;
+  break-inside: auto;
+}
+
+.page-empty { justify-content: center; align-items: center; text-align: center; }
+
+/* The name of the recipe you are looking at, beside the actions for it. */
+.action-label {
+  font-family: var(--font-display);
+  font-size: calc(13px * var(--text-scale));
+  color: var(--ink);
+  padding: 0 6px 0 4px;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The file being shared, shown before it is sent — you should be able to see
+   exactly what leaves. */
+.share-preview {
+  max-height: 34vh;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--ink) 3%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: calc(11px * var(--text-scale));
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--ink);
+}

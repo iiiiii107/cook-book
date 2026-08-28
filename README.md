@@ -34,6 +34,9 @@ framework, a hash router, one store, and plain CSS with custom properties.
 | `src/lib/units.js` | Unit arithmetic — why ingredients are stored parsed |
 | `src/lib/aisles.js` | Sorting a list into the order a shop is walked |
 | `src/lib/timers.js` | Finding the timers already written into a method |
+| `src/lib/md.js` | Recipes as markdown, both directions |
+| `src/lib/backup.js` | The zip backup, photographs included |
+| `src/views/spread.js` | The page-turn furniture every open book shares |
 | `src/views/cook.js` | Cook mode |
 | `src/views/plan.js` | The planning sheet and the shopping list |
 | `src/views/` | One module per screen |
@@ -66,6 +69,38 @@ uses, so there is no second layout to keep in step. Two details make it work:
   changed**, never on every keystroke. Re-fragmenting a multi-column element
   can drop the selection, and the caret then lands back in the first editable
   block — which is how ingredients end up typed into the title.
+
+### The cookbook is one book
+
+Cover, then the index, then every recipe — a single flow you turn through from
+front to back, which puts the first recipe on **page three, the left-hand
+leaf**. The cover and the index are fixed pages: a block the full height of a
+page fills its column, and `break-after: column` sends what follows to the
+next one.
+
+**The order of the pages is the order of the index.** Change the sort and the
+book is rebound, because a contents page is not a filter over some other
+order — it is the order.
+
+Decoration is *shown* in the book but *edited* on the recipe's own spread.
+Elements store their page relative to their own recipe, so a recipe growing —
+or the book being re-sorted — never drags anybody's photographs onto a
+different page; they are offset into the book's numbering only for display,
+read from the laid-out flow because only the browser knows how many pages a
+recipe turned into.
+
+### Sharing, and backup
+
+`md.js` writes recipes as markdown, because whoever you send one to should be
+able to read it without installing anything, and it round-trips — what comes
+out of `parseMarkdown` is what went into `recipeToMarkdown`. What it cannot
+carry is the decoration; the share dialog says so rather than letting it be
+discovered at the other end, and shows the exact file before it leaves.
+
+`backup.js` is a **zip**, not the JSON it replaces. Photographs live in
+IndexedDB rather than the state blob, so a JSON backup restored onto a new
+machine came back with every picture missing — a backup that quietly loses
+things is worse than none. It still reads the old `.json` files.
 
 ### Decorating a page
 
@@ -181,9 +216,8 @@ how chopped tomatoes once ended up in the vegetable aisle.
 Phases 1 to 3 are done: the desk and the flowing pages, the scrapbook layer,
 and the kitchen — cook mode, the planning sheet and the shopping list.
 
-Phase 4 is what remains: Google sign-in and sync across devices, `.md` sharing,
-`.zip` backup with photographs, and importing recipes by screenshot, URL or
-paste.
+Sharing and backup are done. Phase 4 is what remains: Google sign-in and sync
+across devices, and importing recipes by screenshot, URL or paste.
 
 ## Setting up sync (Phase 4, not needed yet)
 

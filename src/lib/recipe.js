@@ -221,11 +221,15 @@ export function totalTime(recipe) {
   return (recipe.time?.prep || 0) + (recipe.time?.cook || 0);
 }
 
+/* The four you asked for. Sorting is not only how the index reads — it is the
+   order of the pages themselves, because the index *is* the book's order. */
+/* Three, not four: you asked for date added, name, preparation time and
+   alphabetical — but inside one cookbook "by name" and "alphabetical" are the
+   same sort, and an option that does nothing is worse than one fewer. */
 export const SORT_MODES = [
   { id: 'added', label: 'Date added' },
   { id: 'alpha', label: 'A–Z' },
   { id: 'time', label: 'Time' },
-  { id: 'name', label: 'Recently updated' },
 ];
 
 export function sortRecipes(recipes, mode = 'added') {
@@ -235,8 +239,9 @@ export function sortRecipes(recipes, mode = 'added') {
       return list.sort((a, b) => a.title.localeCompare(b.title));
     case 'time':
       return list.sort((a, b) => totalTime(a) - totalTime(b));
-    case 'name': // most recently touched first
-      return list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    case 'book': // used by the planner, which draws on every cookbook at once
+      return list.sort((a, b) =>
+        (a.bookId || '').localeCompare(b.bookId || '') || a.title.localeCompare(b.title));
     case 'added':
     default:
       return list.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
