@@ -271,7 +271,11 @@ body[data-view='recipe'] .book-stage { padding-bottom: 56px; }
   color: var(--btn-text);
 }
 
-.on-desk {
+/* Written straight onto the wood. Doubled up so it beats the single-class
+   rules it gets combined with: `.empty` also sets a colour, and on equal
+   specificity app.css is declared after this file and would win. */
+.on-desk,
+.on-desk.on-desk {
   color: var(--on-desk-dim);
   text-shadow: 0 1px 6px rgba(0, 0, 0, .4);
 }
