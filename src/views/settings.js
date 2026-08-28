@@ -269,7 +269,7 @@ function ollamaCard(set, settings) {
 
   const model = el('input', {
     type: 'text',
-    value: ollama.model || 'gemma3:12b',
+    value: ollama.model || 'qwen2.5vl:7b',
     onChange: (event) => set({ ollama: { ...store.state.settings.ollama, model: event.target.value.trim() } }),
   });
 

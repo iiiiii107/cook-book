@@ -31,7 +31,9 @@ export const DEFAULT_SETTINGS = {
   ollama: {
     enabled: false,
     url: 'http://localhost:11434',
-    model: 'gemma3:12b',
+    // A vision model, because reading a screenshot is the only way to get a
+    // recipe off Instagram or TikTok — those pages cannot be fetched at all.
+    model: 'qwen2.5vl:7b',
   },
 };
 

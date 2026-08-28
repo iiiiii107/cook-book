@@ -285,11 +285,12 @@ even locally, so this is **Chrome on the Mac**. Everything else — typing a
 recipe, importing a `.md`, or a link to a site that publishes its recipe as
 data — works on every device without it.
 
-1. **Install it and fetch a model.** `gemma3:12b` can read pictures, which is
-   what makes screenshot import work; it is about 8 GB.
+1. **Install it and fetch a model.** It has to be a *vision* model — reading a
+   screenshot is the only way to get a recipe off Instagram or TikTok, since
+   those pages cannot be fetched at all. `qwen2.5vl:7b` is about 6 GB.
 
    ```bash
-   brew install ollama && ollama pull gemma3:12b
+   brew install ollama && ollama pull qwen2.5vl:7b
    ```
 
 2. **Let the site talk to it.** Ollama refuses requests from a browser unless
