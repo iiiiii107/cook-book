@@ -33,6 +33,15 @@
   --hair:        rgba(43, 40, 37, .09);
   --hair-strong: rgba(43, 40, 37, .17);
 
+  /* A loose sheet lying on the desk. Real paper does not turn dark when the
+     sun goes down — it is only lit differently — so these deliberately are
+     NOT redefined in either dark block. They still follow a custom palette:
+     applyTheme mirrors the paper and ink overrides onto them. */
+  --sheet:       #FAF8F3;
+  --sheet-ink:   #2B2825;
+  --sheet-muted: #857D73;
+  --sheet-line:  rgba(43, 40, 37, .09);
+
   /* --- the one accent -------------------------------------------------- */
   --accent:      #46607A;
   --accent-soft: rgba(70, 96, 122, .09);

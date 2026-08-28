@@ -128,6 +128,11 @@ by `theme.js`, and no stylesheet reads settings any other way. Light and dark ar
 not a toggle but two axes: day is sun through a window and night is moonlight,
 and the cord and the lamp on the desk turn each of them off.
 
+The planning sheet is the exception to the theme: real paper does not turn dark
+when the sun goes down, it is only lit differently. It has its own `--sheet-*`
+tokens that no dark block redefines, and `applyTheme` mirrors any palette
+choice onto them so it still follows a custom palette without ever inverting.
+
 The daylight casts a **window**, not blinds: a casement of two sashes, each
 divided into a grid of panes, with a heavier meeting stile down the middle. The
 lattice is rotated and skewed because a window projected onto a desk lands as a

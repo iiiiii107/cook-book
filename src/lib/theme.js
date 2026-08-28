@@ -87,6 +87,15 @@ export function applyTheme(settings = {}) {
     else root.style.removeProperty(`--${id}`);
   }
 
+  // The loose sheet on the desk keeps its own paper and ink so night never
+  // flips it, but it should still follow a palette the user has chosen.
+  const mirror = { paper: '--sheet', ink: '--sheet-ink', muted: '--sheet-muted' };
+  for (const [key, token] of Object.entries(mirror)) {
+    const value = settings.palette?.[key];
+    if (value) root.style.setProperty(token, value);
+    else root.style.removeProperty(token);
+  }
+
   root.style.setProperty('--font-display', FACES[settings.fontDisplay] || FACES.garamond);
   root.style.setProperty('--font-body', FACES[settings.fontBody] || FACES.inter);
   root.style.setProperty('--text-scale', String(settings.textScale ?? 1));
