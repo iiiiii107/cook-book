@@ -101,3 +101,17 @@ export function formatShort(iso) {
     month: 'short',
   });
 }
+
+/**
+ * How a week is referred to, relative to the one we are in.
+ * "This week" and "Last week" are what a person actually says; anything
+ * further out is better given as its dates than counted in weeks.
+ */
+export function weekLabel(startIso, todayIso = todayISO()) {
+  const here = startOfWeek(todayIso, 1);
+  const weeks = Math.round(daysBetween(here, startIso) / 7);
+  if (weeks === 0) return 'This week';
+  if (weeks === -1) return 'Last week';
+  if (weeks === 1) return 'Next week';
+  return `Week of ${formatShort(startIso)}`;
+}

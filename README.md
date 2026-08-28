@@ -198,6 +198,14 @@ Durations already written into a step become timers you can start with a tap.
 Ranges take their **lower** bound: a thing that is not ready can go back in, a
 thing that has burnt cannot come out.
 
+**The week rolls over on its own.** The plan is keyed by the actual date, so
+next Monday is simply a different key and starts blank — nothing is carried
+over and nothing needs resetting. Two sheets lie on the desk, this week and the
+one just gone; anything older is forgotten at boot by `store.prunePlan`, which
+is why ISO date strings are used throughout — they sort correctly as plain
+strings, so the cutoff is a string comparison. Weeks you planned *ahead* are
+never pruned: those were deliberate, and forgetting them would throw away work.
+
 **The shopping list** is the reason ingredients are stored parsed. Quantities
 only combine inside a family — millilitres and litres add, tablespoons and
 millilitres do not, because that conversion depends on what is being measured

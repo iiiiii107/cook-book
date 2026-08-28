@@ -1,6 +1,7 @@
 import { storage } from './storage.js';
 import { newBook, newRecipe } from './recipe.js';
 import { uid } from './dom.js';
+import { todayISO, addDays, startOfWeek } from './dates.js';
 
 const MEAL_IDS = ['breakfast', 'lunch', 'dinner'];
 
@@ -18,6 +19,10 @@ class Store extends EventTarget {
 
   async init() {
     this.state = await storage.load();
+    // Two weeks of paper on the desk and no more: last week and this one. A
+    // plan that kept every week you ever made would grow without limit and
+    // sync all of it, for a history nobody asked for.
+    if (this.prunePlan()) await storage.save(this.state);
     this.ready = true;
     storage.subscribe((incoming) => {
       this.state = incoming;
@@ -109,6 +114,38 @@ class Store extends EventTarget {
 
   // ---- the planning sheet -------------------------------------------------
 
+  /** The Monday of the oldest week worth keeping. */
+  oldestPlannedWeek() {
+    return startOfWeek(addDays(todayISO(), -7), 1);
+  }
+
+  /**
+   * Forget weeks older than last week. Future weeks are always kept — those
+   * were planned deliberately, and forgetting them would throw away work.
+   * @returns {boolean} whether anything was actually dropped
+   */
+  prunePlan() {
+    const cutoff = this.oldestPlannedWeek();
+    let changed = false;
+    // ISO dates compare correctly as plain strings, which is the whole reason
+    // dates are stored as 'YYYY-MM-DD' throughout.
+    for (const date of Object.keys(this.state.plan || {})) {
+      if (date >= cutoff) continue;
+      delete this.state.plan[date];
+      changed = true;
+    }
+    return changed;
+  }
+
+  /** How many meals are planned across a run of days. */
+  plannedCount(dates) {
+    let count = 0;
+    for (const date of dates) {
+      for (const meal of MEAL_IDS) count += (this.state.plan?.[date]?.[meal] || []).length;
+    }
+    return count;
+  }
+
   /** What is planned for one meal on one day. */
   plannedFor(date, meal) {
     return this.state.plan?.[date]?.[meal] || [];
@@ -149,11 +186,6 @@ class Store extends EventTarget {
     if (!this.state.plan[to.date]) this.state.plan[to.date] = {};
     if (!this.state.plan[to.date][to.meal]) this.state.plan[to.date][to.meal] = [];
     this.state.plan[to.date][to.meal].push(entry);
-    return this.persist();
-  }
-
-  clearPlan(dates) {
-    for (const date of dates) delete this.state.plan?.[date];
     return this.persist();
   }
 

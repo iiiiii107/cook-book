@@ -224,6 +224,9 @@ export function icon(name) {
  */
 export function iconButton(name, label, props = {}) {
   const { primary, ...rest } = props;
+  // `false` is dropped by el(), which is right for most attributes but would
+  // silently swallow `disabled: false` — so it is normalised here.
+  if (rest.disabled === false) delete rest.disabled;
   return el(
     'button',
     {

@@ -1,6 +1,6 @@
 import { el, modal, toast, iconLink, iconButton, chefName } from '../lib/dom.js';
 import { store } from '../lib/store.js';
-import { todayISO, startOfWeek, addDays, formatShort, DAY_FULL, dayOfWeek } from '../lib/dates.js';
+import { todayISO, startOfWeek, addDays, formatShort, weekLabel, DAY_FULL, dayOfWeek } from '../lib/dates.js';
 import { MEALS, buildList, toMarkdown, listFilename } from '../lib/shopping.js';
 import { formatAmount } from '../lib/units.js';
 import { sortRecipes } from '../lib/recipe.js';
@@ -19,25 +19,47 @@ export function renderPlan(host, query) {
   const start = query?.get('week') || startOfWeek(todayISO(), 1);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
 
+  const thisWeek = startOfWeek(todayISO(), 1);
+  const oldest = store.oldestPlannedWeek();
+  const label = weekLabel(start);
+
+  // The heading has to say which week this actually is. Always writing "This
+  // week" while you are looking at November is worse than saying nothing.
+  const actions = el('div', { class: 'scene-actions' }, [
+    iconLink('desk', 'Back to the desk', '#/'),
+    iconButton('chevronLeft', 'The week before', {
+      // There is nothing behind last week — it has been forgotten by design.
+      disabled: start <= oldest,
+      onClick: () => { location.hash = `#/plan?week=${addDays(start, -7)}`; },
+    }),
+    iconButton('chevronRight', 'The week after', {
+      onClick: () => { location.hash = `#/plan?week=${addDays(start, 7)}`; },
+    }),
+  ]);
+
+  if (start !== thisWeek) {
+    actions.append(el('button', {
+      class: 'btn btn-secondary btn-sm',
+      type: 'button',
+      text: 'This week',
+      onClick: () => { location.hash = '#/plan'; },
+    }));
+  }
+
+  actions.append(iconButton('cart', 'Make a shopping list', {
+    primary: true,
+    onClick: () => shoppingList(dates),
+  }));
+
   host.append(
     el('div', { class: 'scene-head' }, [
       el('h1', { class: 'wordmark' }, [
-        'This week',
-        el('small', { text: `What you are cooking, ${chefName(store.state.settings.profile)}.` }),
-      ]),
-      el('div', { class: 'scene-actions' }, [
-        iconLink('desk', 'Back to the desk', '#/'),
-        iconButton('chevronLeft', 'The week before', {
-          onClick: () => { location.hash = `#/plan?week=${addDays(start, -7)}`; },
-        }),
-        iconButton('chevronRight', 'The week after', {
-          onClick: () => { location.hash = `#/plan?week=${addDays(start, 7)}`; },
-        }),
-        iconButton('cart', 'Make a shopping list', {
-          primary: true,
-          onClick: () => shoppingList(dates),
+        label,
+        el('small', {
+          text: `${formatShort(dates[0])} – ${formatShort(dates[6])} · ${chefName(store.state.settings.profile)}`,
         }),
       ]),
+      actions,
     ]),
   );
 
