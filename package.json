@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A digital scrapbook cookbook \u2014 recipes, cook mode, meal planning.",
+  "description": "A digital scrapbook cookbook — recipes, cook mode, meal planning.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,12 +13,13 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {
+    "firebase-tools": "^15.28.2",
     "vite": "^8.2.2",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "firebase": "^12.18.0",
-    "fflate": "^0.8.2"
+    "fflate": "^0.8.2",
+    "firebase": "^12.18.0"
   }
 }

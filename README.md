@@ -231,10 +231,85 @@ and the kitchen — cook mode, the planning sheet and the shopping list.
 Sharing and backup are done. Phase 4 is what remains: Google sign-in and sync
 across devices, and importing recipes by screenshot, URL or paste.
 
-## Setting up sync (Phase 4, not needed yet)
+## Setting up sync and import
 
-`firestore.rules` and `storage.rules` are ready. Photographs go to Firebase
-Storage, which needs the project on the pay-as-you-go plan — **set a spending cap
-at the same time**; the free tier covers this comfortably, and the cap means a
-mistake can never bill you. The config goes in as the `VITE_FIREBASE_CONFIG`
-repository secret. Without it the app simply stays local.
+Both are optional. Without them the app works exactly as it does now —
+everything stays in this browser — and it says so plainly in Settings.
+
+### Firebase, for syncing between your Mac and iPad
+
+This reuses the **`minutes-to-spare`** project your other two apps already use.
+The cookbook writes to `users/{uid}/app/cookbook` and `users/{uid}/recipes`,
+so it cannot collide with 10-minutes-to-spare (`app/state`) or calendartospare
+(`app/calendar`).
+
+1. **Turn on Storage and billing.** In the [Firebase console](https://console.firebase.google.com/project/minutes-to-spare/storage),
+   open Storage and create a bucket. It will ask you to upgrade to the
+   pay-as-you-go (Blaze) plan — photographs cannot be stored on the free plan.
+   **Set a budget alert at the same time**, in Google Cloud Billing. The free
+   allowance is 5 GB stored and 1 GB downloaded a day, so this realistically
+   stays at £0; the cap means a mistake can never bill you.
+
+2. **Sign the CLI in**, from this folder:
+
+   ```bash
+   npx firebase login
+   ```
+
+3. **Publish the rules.** They lock every document and every photograph to the
+   account that owns it:
+
+   ```bash
+   npx firebase deploy --only firestore:rules,storage
+   ```
+
+4. **Give the site the config.** In the console, Project settings → General →
+   Your apps → the web app → Config. Copy the whole `{ ... }` object, then:
+
+   ```bash
+   gh secret set VITE_FIREBASE_CONFIG
+   ```
+
+   Paste it, press Enter, then Ctrl-D. Push anything (or re-run the deploy
+   workflow) and the site is built with sync attached.
+
+The Firebase web config is not a secret — it ships inside the built JavaScript
+of every Firebase site, including your other two. What protects your data is
+the rules from step 3, not the config.
+
+### Ollama, for reading recipes with a model
+
+Free, private, offline, no key. It runs on this Mac only: a page served over
+HTTPS may not call `http://localhost` from another device, and Safari blocks it
+even locally, so this is **Chrome on the Mac**. Everything else — typing a
+recipe, importing a `.md`, or a link to a site that publishes its recipe as
+data — works on every device without it.
+
+1. **Install it and fetch a model.** `gemma3:12b` can read pictures, which is
+   what makes screenshot import work; it is about 8 GB.
+
+   ```bash
+   brew install ollama && ollama pull gemma3:12b
+   ```
+
+2. **Let the site talk to it.** Ollama refuses requests from a browser unless
+   the site is named. This sets that permanently and starts it:
+
+   ```bash
+   launchctl setenv OLLAMA_ORIGINS "https://iiiiii107.github.io,http://localhost:5175"
+   brew services restart ollama
+   ```
+
+3. **Turn it on** in Settings → Reading recipes with a model, then press
+   *Check the connection*.
+
+### Cloudflare, for importing from a link
+
+Only needed for the link path; screenshots and pasted text do not use it. The
+worker is thirty lines and the free tier is 100,000 requests a day against your
+tens a month.
+
+```bash
+npx wrangler deploy
+gh secret set VITE_FETCH_PROXY     # paste the https://…workers.dev URL it prints
+```
