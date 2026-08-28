@@ -1,0 +1,690 @@
+/* The desk, the light falling on it, and the book lying open.
+
+   Wood is drawn rather than photographed: growth bands and grain lines are
+   repeating gradients over the three --wood-* colours, with an feTurbulence
+   noise plate on top for tooth. A species change is therefore a variable
+   swap — sharp at any size, recoloured instantly, no bytes. The contrast is
+   deliberately low: the desk is what the book sits on, not the subject. */
+
+:root {
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* --- the desk surface ---------------------------------------------------- */
+
+.desk-surface {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    /* Board seams. */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 244px,
+      color-mix(in srgb, var(--wood-edge) 34%, transparent) 244px 246px,
+      color-mix(in srgb, #fff 5%, transparent) 246px 248px,
+      transparent 248px 252px
+    ),
+    /* Grain. Four periods sharing no common factor, so the eye never finds
+       the repeat — a single periodic gradient reads as woven fabric, which is
+       exactly what wood must not look like. */
+    repeating-linear-gradient(179deg, transparent 0 6px, color-mix(in srgb, var(--wood-3) 8%, transparent) 6px 7px),
+    repeating-linear-gradient(180.5deg, transparent 0 13px, color-mix(in srgb, var(--wood-3) 6%, transparent) 13px 15px),
+    repeating-linear-gradient(179.5deg, transparent 0 29px, color-mix(in srgb, var(--wood-3) 9%, transparent) 29px 30px),
+    repeating-linear-gradient(180deg, transparent 0 43px, color-mix(in srgb, var(--wood-3) 5%, transparent) 43px 47px),
+    /* Broad growth bands, angled a hair off true so the boards look sawn. */
+    repeating-linear-gradient(
+      179.4deg,
+      var(--wood-1) 0 calc(var(--wood-grain) * 1px),
+      var(--wood-2) calc(var(--wood-grain) * 1.7px) calc(var(--wood-grain) * 2.5px),
+      var(--wood-1) calc(var(--wood-grain) * 3.3px)
+    ),
+    var(--wood-1);
+}
+
+.desk-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--noise);
+  background-size: 180px 180px;
+  opacity: .13;
+  mix-blend-mode: multiply;
+}
+
+/* --- the light ----------------------------------------------------------- */
+
+.lighting {
+  position: fixed;
+  inset: -25%;
+  z-index: 40;
+  pointer-events: none;          /* never in the way of anything */
+  opacity: var(--light-strength);
+  mix-blend-mode: var(--light-blend);
+  transition: opacity .7s ease;
+  /* The wash: the light itself, with no structure in it. */
+  background: linear-gradient(
+    var(--light-angle),
+    transparent 6%,
+    var(--light-tint) 24%,
+    var(--light-tint) 50%,
+    transparent 72%
+  );
+  animation: drift 40s ease-in-out infinite alternate;
+}
+
+/* The window that light is coming through.
+
+   Not blind slats — a casement of two sashes, each divided into a grid of
+   panes, so the shadow is a lattice rather than stripes. Four columns of
+   panes with a heavier meeting stile down the middle where the two sashes
+   close against each other, and four rows crossing them.
+
+   The whole lattice is rotated and skewed, because a window projected onto a
+   desk lands as a parallelogram, never as a square grid. */
+.lighting::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  --pane-w: 10.5%;
+  --pane-h: 11.5%;
+  --bar: .85%;
+  background:
+    /* the meeting stile, down the centre of the casement */
+    linear-gradient(90deg,
+      transparent calc(50% - 1.1%),
+      rgba(0, 0, 0, .58) calc(50% - 1.1%) calc(50% + 1.1%),
+      transparent calc(50% + 1.1%)),
+    /* glazing bars, upright */
+    repeating-linear-gradient(90deg,
+      transparent 0 var(--pane-w),
+      rgba(0, 0, 0, .5) var(--pane-w) calc(var(--pane-w) + var(--bar))),
+    /* glazing bars, across */
+    repeating-linear-gradient(180deg,
+      transparent 0 var(--pane-h),
+      rgba(0, 0, 0, .42) var(--pane-h) calc(var(--pane-h) + var(--bar)));
+  /* Softens the lattice towards the edges so it reads as a cast shadow rather
+     than a graphic laid over the whole screen. */
+  -webkit-mask-image: linear-gradient(
+    var(--light-angle),
+    transparent 8%,
+    #000 26%,
+    #000 48%,
+    transparent 70%
+  );
+  mask-image: linear-gradient(
+    var(--light-angle),
+    transparent 8%,
+    #000 26%,
+    #000 48%,
+    transparent 70%
+  );
+  transform: rotate(-9deg) skewX(-13deg) scale(1.15);
+  filter: blur(1.1px);
+}
+
+/* A bulb is a pool, not a shaft — no window, no angle. It is centred on the
+   lamp in the corner, because light that does not come from the lamp you can
+   see is the sort of detail that quietly breaks the illusion. */
+:root[data-light='bulb'] .lighting {
+  background: radial-gradient(
+    70% 66% at 94% 94%,
+    var(--light-tint) 0%,
+    color-mix(in srgb, var(--light-tint) 42%, transparent) 30%,
+    transparent 70%
+  );
+  animation: none;
+}
+:root[data-light='bulb'] .lighting::before { display: none; }
+
+@keyframes drift {
+  from { transform: translate3d(-1%, -.7%, 0) scale(1.02); }
+  to   { transform: translate3d(1%, .7%, 0) scale(1.04); }
+}
+
+/* --- the switch: a pull-cord by day, a lamp by night --------------------- */
+/* Small and tucked into the corner. It should be findable, not announced. */
+
+.light-switch {
+  position: fixed;
+  z-index: 45;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: .5;
+  transition: opacity .2s ease, transform .4s cubic-bezier(.2, 1.4, .4, 1);
+}
+.light-switch:hover { opacity: .92; }
+/* The switch owns the size; the drawing scales into it. */
+.light-switch svg { display: block; width: 100%; height: 100%; }
+.light-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; opacity: 1; }
+
+.cord {
+  top: 0;
+  right: 26px;
+  width: 14px;
+  height: 76px;
+  transform-origin: 50% 0;
+}
+.cord:hover  { transform: rotate(4deg); }
+.cord:active { transform: rotate(9deg) translateY(6px); }
+
+.lamp {
+  bottom: 16px;
+  right: 20px;
+  width: 34px;
+  height: 40px;
+}
+.lamp:hover { transform: translateY(-2px); }
+
+/* --- layout shell -------------------------------------------------------- */
+
+.scene {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding:
+    calc(14px + env(safe-area-inset-top))
+    calc(16px + env(safe-area-inset-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(16px + env(safe-area-inset-left));
+  gap: 10px;
+}
+
+.scene-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-right: 44px;    /* clear of the cord in the corner */
+  flex: none;
+}
+body[data-view='settings'] .scene-head { padding-right: 0; }
+
+.wordmark {
+  font-family: var(--font-display);
+  font-size: calc(clamp(21px, 3vw, 30px) * var(--text-scale));
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--on-desk);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
+}
+.wordmark small {
+  display: block;
+  font-size: calc(12px * var(--text-scale));
+  font-style: italic;
+  color: var(--on-desk-dim);
+  margin-top: 1px;
+}
+
+.scene-actions { display: flex; gap: 6px; align-items: center; }
+
+/* On the book and a recipe the actions come off the far corner and float at
+   the bottom of the screen, where a thumb actually reaches on a tablet and
+   where they sit near the page rather than across the room from it. */
+body[data-view='book'] .scene-actions,
+body[data-view='recipe'] .scene-actions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 31;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 93%, transparent);
+  border: 1px solid var(--hair);
+  box-shadow: 0 10px 26px -18px var(--shadow-2);
+  backdrop-filter: blur(5px);
+}
+
+/* The room for that bar is reserved in every mode, so switching into
+   customising never shifts the book by a pixel. */
+body[data-view='book'] .book-stage,
+body[data-view='recipe'] .book-stage { padding-bottom: 56px; }
+
+/* Controls sitting on the desk get a paper chip under them — the default
+   secondary button is transparent, which reads on paper and vanishes on wood. */
+.scene-head .btn-icon,
+.scene-head .btn-secondary {
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  border-color: rgba(0, 0, 0, .12);
+  color: var(--ink);
+  text-decoration: none;
+  backdrop-filter: blur(3px);
+}
+.scene-head .btn-icon:hover,
+.scene-head .btn-secondary:hover {
+  background: var(--paper);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.scene-head .btn-icon.is-primary {
+  background: var(--btn-face);
+  border-color: transparent;
+  color: var(--btn-text);
+}
+
+.on-desk {
+  color: var(--on-desk-dim);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .4);
+}
+
+/* --- books lying on the desk --------------------------------------------- */
+/* Centred, and scattered rather than filed: each book gets a small rotation
+   and offset derived from its own id, so the arrangement is haphazard but
+   never reshuffles itself between visits. */
+
+.book-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: clamp(14px, 2.4vw, 34px);
+  padding: 42px 0 48px;
+  overflow-y: auto;
+}
+
+.book-card {
+  position: relative;
+  width: clamp(148px, 15vw, 196px);
+  aspect-ratio: 3 / 4;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  transform: rotate(var(--tilt, 0deg)) translate(var(--shift-x, 0), var(--shift-y, 0));
+  transition: transform .2s ease;
+}
+.book-card:hover {
+  transform: rotate(var(--tilt, 0deg)) translate(var(--shift-x, 0), calc(var(--shift-y, 0px) - 5px));
+}
+
+.book-cover {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px 5px 5px 2px;
+  background:
+    linear-gradient(103deg, rgba(255, 255, 255, .10) 0 6%, transparent 24%),
+    var(--spine, var(--tag-1));
+  box-shadow:
+    inset 12px 0 0 -10px rgba(0, 0, 0, .26),
+    0 14px 26px -18px var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 15px 15px 18px 22px;
+  text-align: left;
+  overflow: hidden;
+}
+.book-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--noise);
+  background-size: 180px 180px;
+  opacity: .08;
+  mix-blend-mode: overlay;
+}
+.book-card::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: -4px;
+  bottom: 5px;
+  width: 5px;
+  border-radius: 0 2px 2px 0;
+  background: repeating-linear-gradient(180deg, var(--paper) 0 2px, var(--paper-edge) 2px 4px);
+}
+
+.book-title {
+  font-family: var(--font-display);
+  font-size: calc(18px * var(--text-scale));
+  font-weight: 500;
+  line-height: 1.15;
+  color: #FBF7EF;
+  position: relative;
+  z-index: 1;
+}
+.book-sub {
+  font-size: calc(11px * var(--text-scale));
+  color: rgba(251, 247, 239, .68);
+  margin-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+.book-count {
+  font-size: calc(9.5px * var(--text-scale));
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: rgba(251, 247, 239, .52);
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+/* The "new cookbook" slot reads as an empty space on the desk, not a book. */
+.book-new .book-cover {
+  background: rgba(250, 246, 238, .07);
+  border: 1px dashed rgba(250, 246, 238, .34);
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+}
+.book-new .book-title { font-style: italic; font-size: calc(15px * var(--text-scale)); }
+.book-new::after { display: none; }
+
+/* --- the open book -------------------------------------------------------- */
+
+.book-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  container-type: size;   /* so the book can be sized against it, below */
+}
+
+/* The book keeps its proportions and still always fits.
+
+   150cqh is exactly the width at which a 3:2 page reaches the full height of
+   the stage, so whichever of the three limits is smallest wins and the other
+   dimension follows from aspect-ratio. No height is ever set explicitly,
+   which is what stops it from overflowing on a short window. */
+.spread {
+  position: relative;
+  width: min(100%, 1560px, 150cqh);
+  aspect-ratio: 3 / 2;
+  display: flex;
+  border-radius: 3px;
+  background: var(--paper);
+  overflow: hidden;
+  box-shadow:
+    0 1px 1px var(--shadow-1),
+    0 26px 52px -30px var(--shadow-2);
+}
+
+/* The two leaves, and the shadow where they meet in the middle. */
+.spread::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, .05) 0 1%,
+    transparent 5%,
+    transparent 46%,
+    rgba(0, 0, 0, .08) 50%,
+    transparent 54%,
+    transparent 95%,
+    rgba(0, 0, 0, .05) 99% 100%
+  );
+  z-index: 6;
+}
+.spread::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--noise);
+  background-size: 180px 180px;
+  opacity: .035;
+  mix-blend-mode: multiply;
+  z-index: 5;
+}
+
+.page {
+  flex: 1;
+  min-width: 0;
+  padding: clamp(24px, 3.2vw, 52px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- the flowing text ----------------------------------------------------- */
+
+.flow-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* The extra room at the foot is the folio strip's — text must not run
+     underneath the page numbers. */
+  padding: clamp(24px, 3.2vw, 52px) clamp(24px, 3.2vw, 52px) 46px;
+}
+
+/* Column width and height are set from JS; everything else lives here. */
+.flow {
+  column-fill: auto;
+  will-change: transform;
+}
+.flow > * { break-inside: avoid-column; }
+.flow .allow-break,
+.flow .recipe-steps,
+.flow .recipe-notes { break-inside: auto; }
+
+/* --- turning the page ------------------------------------------------------ */
+/* One sheet of paper, rotating about the spine. Its front is the page you are
+   leaving and its back is the page you are turning to, which is what a real
+   leaf is; the pages either side of it are already in their new state
+   underneath. See paginate.js for how the three layers are composed. */
+
+.leaf-layer {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  perspective: 2400px;
+}
+
+.leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leaf-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  backface-visibility: hidden;
+  background: var(--paper);
+}
+.leaf-face.is-back { transform: rotateY(180deg); }
+
+/* A little shading so the turning sheet reads as paper catching the light. */
+.leaf-face::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, .10), transparent 22%);
+}
+.leaf-face.is-back::after {
+  background: linear-gradient(270deg, rgba(0, 0, 0, .10), transparent 22%);
+}
+
+/* The static half that the turning leaf lands on top of. */
+.leaf-under {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.leaf-page { position: absolute; inset: 0; overflow: hidden; }
+
+/* --- page furniture -------------------------------------------------------- */
+
+.page-nav {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.page-nav > * { pointer-events: auto; }
+
+.folio {
+  font-family: var(--font-display);
+  font-size: calc(12px * var(--text-scale));
+  font-style: italic;
+  color: var(--muted);
+  min-width: 10ch;
+  text-align: center;
+}
+
+/* The arrows sit at the outer edges, where a thumb would be. */
+.turn {
+  position: absolute;
+  top: 50%;
+  z-index: 7;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 62px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  opacity: .8;
+  transition: opacity .16s ease, background .16s ease, color .16s ease;
+}
+.turn:hover { opacity: 1; background: var(--accent-soft); color: var(--accent); }
+.turn:disabled { opacity: .16; cursor: default; background: none; }
+.turn svg { width: 20px; height: 20px; fill: none; stroke: currentColor;
+            stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.turn-back { left: 4px; }
+.turn-next { right: 4px; }
+
+/* --- the plan sheet -------------------------------------------------------- */
+
+.plan-sheet {
+  position: relative;
+  width: clamp(148px, 15vw, 196px);
+  aspect-ratio: 3 / 4;
+  border: none;
+  cursor: pointer;
+  padding: 16px 15px;
+  text-align: left;
+  border-radius: 1px;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 25px, var(--paper-line) 25px 26px),
+    var(--paper);
+  box-shadow: 0 12px 24px -18px var(--shadow-2);
+  transform: rotate(var(--tilt, -1.4deg)) translate(var(--shift-x, 0), var(--shift-y, 0));
+  transition: transform .2s ease;
+}
+.plan-sheet:hover {
+  transform: rotate(var(--tilt, -1.4deg)) translate(var(--shift-x, 0), calc(var(--shift-y, 0px) - 5px));
+}
+.plan-sheet h3 { font-size: calc(16px * var(--text-scale)); }
+.plan-sheet p {
+  font-size: calc(11px * var(--text-scale));
+  color: var(--muted);
+  margin: 5px 0 0;
+}
+
+/* --- narrow screens: one page at a time ------------------------------------ */
+/* A phone cannot show a spread and stay readable, so it shows a single leaf.
+   The flow engine is told a one-page viewport and everything else follows. */
+
+@media (max-width: 780px) {
+  .spread { aspect-ratio: 2 / 3; width: min(100%, 66cqh); }
+  .spread::before { background: none; }
+  .turn-back { left: 0; }
+  .turn-next { right: 0; }
+}
+
+/* Settings is a stack of UI cards rather than a page being read, and a shaft
+   of light across a form is just glare on the text. */
+body[data-view='settings'] .lighting { opacity: calc(var(--light-strength) * .3); }
+body[data-view='settings'] .scene { overflow-y: auto; }
+
+/* --- how a cookbook is bound ---------------------------------------------- */
+/* Each binding is drawn from the one spine colour, so choosing a colour and
+   choosing a style stay independent — no style needs its own palette. */
+
+.book-cover[data-style='halfbound'] {
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--spine) 72%, #000) 0 22%,
+      color-mix(in srgb, var(--spine) 55%, #FBF7EF) 22% 100%),
+    var(--spine);
+}
+.book-cover[data-style='halfbound'] .book-title,
+.book-cover[data-style='halfbound'] .book-sub,
+.book-cover[data-style='halfbound'] .book-count { color: #2B2825; text-shadow: none; }
+.book-cover[data-style='halfbound'] .book-sub { color: rgba(43, 40, 37, .66); }
+.book-cover[data-style='halfbound'] .book-count { color: rgba(43, 40, 37, .5); }
+
+/* Raised bands across the spine, the way an old bound volume is sewn. */
+.book-cover[data-style='banded'] {
+  background:
+    repeating-linear-gradient(180deg,
+      transparent 0 34px,
+      rgba(0, 0, 0, .26) 34px 38px,
+      rgba(255, 255, 255, .10) 38px 41px,
+      transparent 41px 46px),
+    var(--spine);
+}
+
+/* A paper label pasted on the front. */
+.book-cover[data-style='label']::before {
+  content: '';
+  position: absolute;
+  left: 26px;
+  right: 14px;
+  top: 16%;
+  bottom: 12%;
+  background: #FBF7EF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .28);
+  z-index: 0;
+}
+.book-cover[data-style='label'] .book-title,
+.book-cover[data-style='label'] .book-sub,
+.book-cover[data-style='label'] .book-count { color: #2B2825; text-shadow: none; }
+.book-cover[data-style='label'] .book-sub { color: rgba(43, 40, 37, .66); }
+.book-cover[data-style='label'] .book-count { color: rgba(43, 40, 37, .5); }
+
+/* Bookcloth: a fine woven tooth over the colour. */
+.book-cover[data-style='cloth'] {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(180deg, rgba(0,0,0,.07) 0 1px, transparent 1px 3px),
+    var(--spine);
+}
+
+.book-sticker {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  width: 34%;
+  aspect-ratio: 1;
+  z-index: 1;
+  opacity: .95;
+  transform: rotate(6deg);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3));
+}
+.book-sticker svg { width: 100%; height: 100%; display: block; }

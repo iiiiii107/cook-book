@@ -1,0 +1,272 @@
+/* The decoration layer: photographs, stickers, doodles and scraps of text.
+
+   It sits above the text and is present in every mode — you have to be able to
+   see your photographs while you read — but it only takes input while you are
+   customising. Everything inside is positioned as a percentage of its page, so
+   a sticker lands in the same spot at any size. */
+
+.deco-layer {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+.deco-layer.is-active { pointer-events: auto; }
+
+.deco-page {
+  position: absolute;
+  overflow: hidden;
+}
+.deco-layer.is-active .deco-page { touch-action: none; }
+
+/* Drawing tools want the whole page as canvas; the move tool wants to let
+   clicks through to whatever is underneath. */
+.deco-layer.is-active[data-tool='move'] .deco-page { pointer-events: none; }
+.deco-layer.is-active[data-tool='move'] .deco-item { pointer-events: auto; }
+
+.deco-ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.deco-layer.is-active:not([data-tool='move']) .deco-ink { pointer-events: none; }
+.deco-ink path { pointer-events: stroke; }
+
+.deco-item {
+  position: absolute;
+  transform-origin: 50% 50%;
+  /* The drag no longer calls preventDefault (that would kill the dblclick a
+     note is opened with), so scrolling and text selection are held off here. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Except inside a note being written in, where selecting text is the point. */
+.deco-item .deco-text[contenteditable='plaintext-only'] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.deco-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 1px;
+  box-shadow: 0 1px 2px var(--shadow-1), 0 8px 18px -12px var(--shadow-2);
+}
+.deco-item .sticker-art { width: 100%; height: 100%; display: block; }
+
+.deco-text[contenteditable='plaintext-only'] {
+  outline: 1px solid var(--accent);
+  background: var(--accent-soft);
+  cursor: text;
+}
+
+.deco-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: calc(13px * var(--text-scale));
+  line-height: 1.35;
+  color: var(--ink);
+  padding: 4px 6px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.deco-missing {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: calc(10.5px * var(--text-scale));
+  color: var(--muted);
+  border: 1px dashed var(--hair-strong);
+  text-align: center;
+  padding: 6px;
+}
+
+/* --- handles, only while customising -------------------------------------- */
+
+.deco-handle {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--paper);
+  background: var(--accent);
+  color: var(--btn-text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .14s ease;
+  font-size: 12px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.deco-item:hover .deco-handle,
+.deco-item.is-selected .deco-handle { opacity: 1; }
+
+.deco-resize { right: -9px; bottom: -9px; cursor: nwse-resize; }
+.deco-rotate { right: -9px; top: -9px; cursor: grab; background: var(--muted); }
+.deco-remove { left: -9px; top: -9px; background: var(--tag-5); }
+
+.deco-layer.is-active[data-tool='move'] .deco-item {
+  outline: 1px dashed transparent;
+  transition: outline-color .14s ease;
+}
+.deco-layer.is-active[data-tool='move'] .deco-item:hover {
+  outline-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* --- the tray -------------------------------------------------------------- */
+
+.deco-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  border: 1px solid var(--hair);
+  box-shadow: 0 10px 26px -20px var(--shadow-2);
+  backdrop-filter: blur(4px);
+  flex: none;
+}
+
+.tray-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.tray-row + .tray-row { border-left: 1px solid var(--hair); padding-left: 14px; }
+
+.tray-tool {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.tray-tool svg { width: 18px; height: 18px; fill: none; stroke: currentColor;
+                 stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.tray-tool:hover { color: var(--ink); background: var(--hair); }
+.tray-tool[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--btn-text);
+  border-color: transparent;
+}
+
+.tray-sticker {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+.tray-sticker svg { width: 100%; height: 100%; display: block; }
+.tray-sticker:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.tray-add {
+  font-size: calc(12px * var(--text-scale));
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hair-strong);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.tray-add:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- the crop dialog -------------------------------------------------------- */
+
+.crop-frame {
+  position: relative;
+  width: 100%;
+  max-height: 46vh;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--ink-deep);
+  touch-action: none;
+  user-select: none;
+  cursor: move;
+}
+.crop-image { display: block; width: 100%; max-height: 46vh; object-fit: contain; }
+
+.crop-shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 13, 11, .58);
+  pointer-events: none;
+}
+
+.crop-window {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, .9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .35);
+  pointer-events: none;
+}
+/* Rule-of-thirds guides, the way a camera draws them. */
+.crop-window::before,
+.crop-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 33.2%, rgba(255,255,255,.28) 33.3% 33.5%, transparent 33.6%),
+    linear-gradient(90deg, transparent 66.4%, rgba(255,255,255,.28) 66.5% 66.7%, transparent 66.8%);
+}
+.crop-window::after {
+  background:
+    linear-gradient(180deg, transparent 33.2%, rgba(255,255,255,.28) 33.3% 33.5%, transparent 33.6%),
+    linear-gradient(180deg, transparent 66.4%, rgba(255,255,255,.28) 66.5% 66.7%, transparent 66.8%);
+}
+
+.crop-grip {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .5);
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+
+.crop-ratios { margin-bottom: 8px; }
+
+/* The tray floats over the desk rather than sitting in the column. In the
+   flow it pushed the book down every time customising was switched on, and a
+   control appearing should never move the thing you are working on. */
+.tray-host {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(62px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  pointer-events: none;
+}
+.deco-tray { pointer-events: auto; }
+
+/* The cover page is decorated the same way a recipe page is, but it is not
+   part of a text flow, so it hosts the layer itself. */
+.page-cover { position: relative; }
+.deco-host {
+  position: absolute;
+  inset: clamp(24px, 3.2vw, 52px);
+  pointer-events: none;
+}
+.deco-host .deco-layer { pointer-events: none; }
+.deco-host .deco-layer.is-active { pointer-events: auto; }

@@ -1,0 +1,17 @@
+rules_version = '2';
+
+/* Photographs, one folder per user. The size cap is the backstop against a
+   full-resolution phone photo being uploaded by accident; the app itself
+   re-encodes to WebP well under this before it ever gets here. */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/assets/{asset=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
