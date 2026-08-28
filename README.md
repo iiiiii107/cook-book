@@ -31,6 +31,11 @@ framework, a hash router, one store, and plain CSS with custom properties.
 | `src/lib/elements.js` | What gets stuck on a page |
 | `src/lib/assets.js` | Photograph blobs, in IndexedDB |
 | `src/lib/crop.js` | Crop and re-encode before a photo lands |
+| `src/lib/units.js` | Unit arithmetic — why ingredients are stored parsed |
+| `src/lib/aisles.js` | Sorting a list into the order a shop is walked |
+| `src/lib/timers.js` | Finding the timers already written into a method |
+| `src/views/cook.js` | Cook mode |
+| `src/views/plan.js` | The planning sheet and the shopping list |
 | `src/views/` | One module per screen |
 | `scripts/generate-icons.mjs` | Draws and encodes the PWA icons from scratch |
 
@@ -139,11 +144,46 @@ lattice is rotated and skewed because a window projected onto a desk lands as a
 parallelogram, and masked along the shaft so it reads as a cast shadow rather
 than a graphic laid over the screen.
 
+### The kitchen
+
+**Cook mode** holds the screen awake (re-acquiring the Wake Lock every time the
+tab comes back, or it sleeps the first time you glance at your phone), closes
+every way out but one deliberate action, and shows the page you made — your
+photographs and doodles included — with the step you are on lit.
+
+The dimming is **one scrim over the page with a hole cut in it**, not opacity on
+each element, so a photograph sitting behind the current step dims with it and
+nothing shifts as the focus travels down the method. Ticking something off
+draws the hand-made stroke from `10minutestospare`, seeded per row so no two
+look stamped. Marks made while cooking are recorded with `origin: 'cook'` and
+kept out of the recipe — they are the state of tonight's dinner, not a property
+of the recipe, and should not travel to anyone you share it with.
+
+Durations already written into a step become timers you can start with a tap.
+Ranges take their **lower** bound: a thing that is not ready can go back in, a
+thing that has burnt cannot come out.
+
+**The shopping list** is the reason ingredients are stored parsed. Quantities
+only combine inside a family — millilitres and litres add, tablespoons and
+millilitres do not, because that conversion depends on what is being measured
+and guessing it would put a wrong number on the list. What cannot be added is
+kept side by side (`2 tbsp + 100 ml olive oil`) rather than fudged. Display
+units are a shorter list than readable ones: 100 ml is a decilitre and nobody
+has ever written that down, and a step up only happens when it costs no
+accuracy — 1500 g becomes 1.5 kg, 1333 g stays in grams.
+
+Aisle keywords are written in the **singular**, because names reach `aisles.js`
+after `normaliseItem` — a plural keyword would silently never match, which is
+how chopped tomatoes once ended up in the vegetable aisle.
+
 ## Where it is going
 
-Phase 1 (done) is the desk, the books, the flowing recipe pages and the editor.
-Then: decoration and stylus doodling; cook mode, the weekly planning sheet and
-the shopping list; and finally Google sign-in, sharing and recipe import.
+Phases 1 to 3 are done: the desk and the flowing pages, the scrapbook layer,
+and the kitchen — cook mode, the planning sheet and the shopping list.
+
+Phase 4 is what remains: Google sign-in and sync across devices, `.md` sharing,
+`.zip` backup with photographs, and importing recipes by screenshot, URL or
+paste.
 
 ## Setting up sync (Phase 4, not needed yet)
 

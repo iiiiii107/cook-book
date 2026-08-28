@@ -154,6 +154,12 @@ function header(recipe, book, editing, decorating) {
           location.hash = `#/recipe/${recipe.id}?deco=1`;
         },
       }),
+      iconButton('flame', 'Cook this', {
+        primary: true,
+        onClick: () => {
+          location.hash = `#/cook/${recipe.id}`;
+        },
+      }),
     );
   }
 

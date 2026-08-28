@@ -1,5 +1,6 @@
 import { el, modal, chefName, toast, iconLink, hashUnit } from '../lib/dom.js';
 import { store } from '../lib/store.js';
+import { todayISO, startOfWeek, addDays } from '../lib/dates.js';
 import { toHex, COVER_STYLES, PAPER_STOCKS } from '../lib/theme.js';
 import { stickerSvg, STICKER_IDS } from '../lib/stickers.js';
 
@@ -114,6 +115,19 @@ function bookCard(book) {
   return card;
 }
 
+/** How much is on the plan this week, so the sheet is not silent about it. */
+function plannedCount() {
+  const start = startOfWeek(todayISO(), 1);
+  let count = 0;
+  for (let i = 0; i < 7; i += 1) {
+    const day = store.state.plan?.[addDays(start, i)];
+    for (const meal of ['breakfast', 'lunch', 'dinner']) {
+      count += (day?.[meal] || []).length;
+    }
+  }
+  return count;
+}
+
 function planSheet() {
   return el(
     'button',
@@ -121,11 +135,13 @@ function planSheet() {
       class: 'plan-sheet',
       type: 'button',
       style: scatter('the-planning-sheet'),
-      onClick: () => toast('The planning sheet arrives with the kitchen tools.'),
+      onClick: () => { location.hash = '#/plan'; },
     },
     [
       el('h3', { text: 'This week' }),
-      el('p', { text: 'Plan the meals, then take the shopping list with you.' }),
+      el('p', { text: plannedCount()
+        ? `${plannedCount()} meals planned. Tap to see the week.`
+        : 'Plan the meals, then take the shopping list with you.' }),
     ],
   );
 }

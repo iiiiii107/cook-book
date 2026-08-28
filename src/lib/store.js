@@ -1,5 +1,8 @@
 import { storage } from './storage.js';
 import { newBook, newRecipe } from './recipe.js';
+import { uid } from './dom.js';
+
+const MEAL_IDS = ['breakfast', 'lunch', 'dinner'];
 
 /* Single source of truth, in the shape 10minutestospare uses: views read
    `store.state`, call an action, and re-render on the change event. No view
@@ -102,6 +105,79 @@ class Store extends EventTarget {
     if (!recipe?.elements) return this.persist();
     recipe.elements = recipe.elements.filter((e) => e.id !== elementId);
     return this.persist();
+  }
+
+  // ---- the planning sheet -------------------------------------------------
+
+  /** What is planned for one meal on one day. */
+  plannedFor(date, meal) {
+    return this.state.plan?.[date]?.[meal] || [];
+  }
+
+  /**
+   * Put a recipe, or a plain note, into a slot.
+   * @param {string} date 'YYYY-MM-DD'
+   * @param {string} meal breakfast | lunch | dinner
+   * @param {{recipeId?: string, text?: string, servings?: number}} entry
+   */
+  addToPlan(date, meal, entry) {
+    if (!this.state.plan) this.state.plan = {};
+    if (!this.state.plan[date]) this.state.plan[date] = {};
+    if (!this.state.plan[date][meal]) this.state.plan[date][meal] = [];
+    this.state.plan[date][meal].push({ id: uid(), ...entry });
+    return this.persist();
+  }
+
+  removeFromPlan(date, meal, id) {
+    const slot = this.state.plan?.[date]?.[meal];
+    if (!slot) return this.persist();
+    this.state.plan[date][meal] = slot.filter((e) => e.id !== id);
+    // A day with nothing left in it is removed, so the plan does not grow a
+    // tail of empty weeks that has to be synced forever.
+    if (MEAL_IDS.every((m) => !(this.state.plan[date][m] || []).length)) {
+      delete this.state.plan[date];
+    }
+    return this.persist();
+  }
+
+  /** Move an entry to another slot — the drag between days. */
+  moveInPlan(from, to, id) {
+    const slot = this.state.plan?.[from.date]?.[from.meal];
+    const entry = slot?.find((e) => e.id === id);
+    if (!entry) return this.persist();
+    this.state.plan[from.date][from.meal] = slot.filter((e) => e.id !== id);
+    if (!this.state.plan[to.date]) this.state.plan[to.date] = {};
+    if (!this.state.plan[to.date][to.meal]) this.state.plan[to.date][to.meal] = [];
+    this.state.plan[to.date][to.meal].push(entry);
+    return this.persist();
+  }
+
+  clearPlan(dates) {
+    for (const date of dates) delete this.state.plan?.[date];
+    return this.persist();
+  }
+
+  // ---- cooking --------------------------------------------------------------
+
+  /* What has been crossed off while cooking. Kept out of the recipe itself:
+     it is the state of tonight's dinner, not a property of the recipe, and it
+     should not travel to anyone the recipe is shared with. */
+  cookProgress(recipeId) {
+    return this.cooking?.[recipeId] || { steps: [], ingredients: [] };
+  }
+
+  toggleCooked(recipeId, kind, id) {
+    if (!this.cooking) this.cooking = {};
+    const progress = this.cooking[recipeId] || { steps: [], ingredients: [] };
+    const list = progress[kind];
+    progress[kind] = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+    this.cooking[recipeId] = progress;
+    this.emit();
+  }
+
+  clearCooked(recipeId) {
+    if (this.cooking) delete this.cooking[recipeId];
+    this.emit();
   }
 
   // ---- settings ----------------------------------------------------------

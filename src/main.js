@@ -8,6 +8,8 @@ import { renderDesk } from './views/desk.js';
 import { renderBook } from './views/book.js';
 import { renderRecipe } from './views/recipe.js';
 import { renderSettings } from './views/settings.js';
+import { renderPlan } from './views/plan.js';
+import { renderCook } from './views/cook.js';
 
 /* Hash routing, as in the other apps: GitHub Pages serves one file, so a
    real path would 404 on refresh. The route also lands on <body data-view>
@@ -17,6 +19,8 @@ const ROUTES = [
   { pattern: /^\/?$/, view: 'desk', render: renderDesk },
   { pattern: /^\/book\/([^/]+)$/, view: 'book', render: renderBook },
   { pattern: /^\/recipe\/([^/]+)$/, view: 'recipe', render: renderRecipe },
+  { pattern: /^\/cook\/([^/]+)$/, view: 'cook', render: renderCook },
+  { pattern: /^\/plan$/, view: 'plan', render: renderPlan },
   { pattern: /^\/settings$/, view: 'settings', render: renderSettings },
 ];
 
@@ -151,11 +155,14 @@ async function boot() {
   window.addEventListener('hashchange', go);
 
   // A save normally means "re-render everything", which is what keeps two
-  // tabs and two devices honest. While a page is being typed on, though, a
-  // rebuild would take the caret with it — so the editor holds the render
-  // and asks for one itself when it is done.
+  // tabs and two devices honest. Two screens hold that render and redraw
+  // themselves instead: the editor, because a rebuild would take the caret
+  // with it, and cook mode, because a rebuild would lose which step you are
+  // on and drop you back at the top of the method mid-recipe.
   store.addEventListener('change', () => {
-    if (document.body.dataset.editing !== '1') go();
+    const held = document.body.dataset.editing === '1'
+      || document.body.dataset.cooking === '1';
+    if (!held) go();
   });
 
   go();

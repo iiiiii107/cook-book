@@ -1,0 +1,355 @@
+/* The planning sheet, the shopping list, and cook mode. */
+
+/* --- the planning sheet ----------------------------------------------------- */
+
+.sheet {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 0 4px;
+  /* A loose sheet is real paper: it does not turn dark at night, it is only
+     lit differently. See --sheet in tokens.css. */
+  background:
+    repeating-linear-gradient(180deg, transparent 0 25px, var(--sheet-line) 25px 26px),
+    var(--sheet);
+  color: var(--sheet-ink);
+  border-radius: 2px;
+  box-shadow: 0 1px 1px var(--shadow-1), 0 18px 40px -26px var(--shadow-2);
+  transform: rotate(-.25deg);
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: minmax(74px, .6fr) repeat(7, minmax(96px, 1fr));
+  gap: 1px;
+  padding: 14px 16px 18px;
+  min-width: 720px;
+}
+
+.plan-corner { }
+
+.plan-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--sheet-ink) 22%, transparent);
+}
+.plan-dow {
+  font-family: var(--font-display);
+  font-size: calc(13px * var(--text-scale));
+  color: var(--sheet-ink);
+}
+.plan-date {
+  font-size: calc(10px * var(--text-scale));
+  color: var(--sheet-muted);
+}
+.plan-day.is-today .plan-dow { color: var(--accent); font-weight: 600; }
+.plan-day.is-today { border-bottom-color: var(--accent); }
+
+.plan-meal {
+  display: flex;
+  align-items: center;
+  font-size: calc(10px * var(--text-scale));
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--sheet-muted);
+  padding-right: 8px;
+  border-right: 1px solid color-mix(in srgb, var(--sheet-ink) 12%, transparent);
+}
+
+.plan-slot {
+  min-height: 62px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--sheet-ink) 8%, transparent);
+}
+.plan-slot.is-over {
+  background: var(--accent-soft);
+  outline: 1px dashed var(--accent);
+}
+
+.plan-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-left: 2px solid var(--accent);
+  font-size: calc(11px * var(--text-scale));
+  cursor: grab;
+}
+.plan-entry.is-note {
+  background: color-mix(in srgb, var(--sheet-ink) 7%, transparent);
+  border-left-color: var(--sheet-muted);
+  font-style: italic;
+}
+.plan-entry:active { cursor: grabbing; }
+
+.plan-entry-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sheet-ink);
+  text-decoration: none;
+}
+.plan-entry-name:hover { text-decoration: underline; }
+
+.plan-remove {
+  border: none;
+  background: none;
+  color: var(--sheet-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0;
+}
+.plan-entry:hover .plan-remove { opacity: 1; }
+.plan-remove:hover { color: var(--tag-5); }
+
+.plan-add {
+  border: 1px dashed color-mix(in srgb, var(--sheet-ink) 20%, transparent);
+  background: none;
+  color: var(--sheet-muted);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 0;
+  opacity: 0;
+  transition: opacity .14s ease;
+}
+.plan-slot:hover .plan-add { opacity: 1; }
+.plan-add:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- the drawer of recipes to drag ------------------------------------------ */
+
+.plan-drawer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 2px 0;
+  min-width: 0;
+}
+.plan-drawer .label { color: var(--on-desk-dim); flex: none; }
+
+.drawer-rail {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  min-width: 0;
+}
+.drawer-chip {
+  flex: none;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  border: 1px solid var(--hair);
+  color: var(--ink);
+  font-size: calc(12px * var(--text-scale));
+  white-space: nowrap;
+  cursor: grab;
+}
+.drawer-chip:active { cursor: grabbing; }
+.drawer-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- picking something for a slot ------------------------------------------- */
+
+.pick-list {
+  max-height: 40vh;
+  overflow: auto;
+  margin-bottom: 14px;
+  border: 1px solid var(--hair);
+  border-radius: var(--radius-sm);
+}
+.pick-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-bottom: 1px solid var(--hair);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+.pick-row:last-child { border-bottom: none; }
+.pick-row:hover { background: var(--accent-soft); }
+.pick-name { font-family: var(--font-display); font-size: calc(15px * var(--text-scale)); }
+.pick-book { font-size: calc(11px * var(--text-scale)); color: var(--muted); margin-left: auto; }
+
+/* --- the shopping list review ------------------------------------------------ */
+
+.list-review { max-height: 48vh; overflow: auto; }
+.list-review section { margin-bottom: 14px; }
+.list-review .label { display: block; margin-bottom: 5px; color: var(--accent); }
+
+.list-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 2px;
+  font-size: calc(13px * var(--text-scale));
+  cursor: pointer;
+}
+.list-row:hover { background: var(--hair); }
+.list-row input { flex: none; accent-color: var(--accent); }
+.list-amount { font-weight: 600; min-width: 5.5ch; }
+.list-item { flex: 1; }
+.list-row input:not(:checked) ~ .list-item,
+.list-row input:not(:checked) ~ .list-amount { opacity: .4; text-decoration: line-through; }
+.list-from { font-size: calc(10.5px * var(--text-scale)); color: var(--muted); }
+
+/* --- cook mode ---------------------------------------------------------------- */
+
+/* Nothing that leads anywhere else is on screen while you are cooking. */
+body[data-cooking='1'] .light-switch { display: none; }
+
+.cook-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 0 0 8px;
+}
+.cook-title { flex: 1; min-width: 0; }
+.cook-title h1 {
+  font-family: var(--font-display);
+  font-size: calc(clamp(20px, 2.4vw, 28px) * var(--text-scale));
+  font-weight: 500;
+  color: var(--on-desk);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .45);
+  line-height: 1.1;
+}
+.cook-sub {
+  font-size: calc(11.5px * var(--text-scale));
+  color: var(--on-desk-dim);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .4);
+}
+
+.cook-portions,
+.cook-bar-actions { display: flex; align-items: center; gap: 6px; }
+.cook-portions .btn-icon,
+.cook-bar-actions .btn-icon,
+.cook-bar-actions .btn-secondary {
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  border-color: rgba(0, 0, 0, .12);
+  color: var(--ink);
+  backdrop-filter: blur(3px);
+}
+.cook-portion-count {
+  font-size: calc(12.5px * var(--text-scale));
+  color: var(--on-desk);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .45);
+  min-width: 8.5ch;
+  text-align: center;
+}
+.cook-portion-count strong { font-size: calc(15px * var(--text-scale)); }
+
+/* Everything on the page is bigger — this is read from arm's length. */
+body[data-cooking='1'] .recipe-ingredients li,
+body[data-cooking='1'] .recipe-steps li {
+  font-size: calc(15px * var(--text-scale));
+  line-height: 1.6;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+body[data-cooking='1'] .recipe-heading { font-size: calc(11px * var(--text-scale)); }
+
+/* --- crossing things off ------------------------------------------------------ */
+
+.tickable {
+  position: relative;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background .12s ease;
+}
+.tickable:hover { background: var(--accent-soft); }
+.tickable.is-done { color: var(--muted); }
+
+/* The hand-drawn stroke, from 10minutestospare — a different wobble per row
+   so no two look stamped. */
+.tickable .strike {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 48%;
+  height: 10px;
+  pointer-events: none;
+  overflow: visible;
+}
+.tickable .strike path {
+  fill: none;
+  stroke: var(--marker);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.recipe-steps li.is-current {
+  background: color-mix(in srgb, var(--lemon, var(--accent)) 10%, transparent);
+}
+
+/* One scrim with a hole cut in it, rather than opacity on each element: a
+   photograph behind the current step dims with it, and nothing moves as the
+   focus travels down the page. */
+.cook-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+.cook-scrim.is-on { opacity: 1; }
+
+/* --- timers -------------------------------------------------------------------- */
+
+.timer-strip { display: inline-flex; gap: 5px; margin-right: 7px; vertical-align: middle; }
+
+.timer-chip {
+  font-family: var(--font-body);
+  font-size: calc(11px * var(--text-scale));
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.timer-chip:hover { background: var(--accent); color: var(--btn-text); }
+.timer-chip.is-running {
+  background: var(--accent);
+  color: var(--btn-text);
+  font-variant-numeric: tabular-nums;
+}
+.timer-chip.is-done {
+  background: var(--tag-2);
+  border-color: var(--tag-2);
+  color: var(--btn-text);
+  animation: nudge .6s ease 3;
+}
+@keyframes nudge {
+  0%, 100% { transform: none; }
+  50% { transform: scale(1.08); }
+}
+
+@media (max-width: 780px) {
+  .plan-grid { min-width: 640px; }
+  .sheet { overflow-x: auto; }
+}
