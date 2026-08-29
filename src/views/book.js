@@ -6,7 +6,8 @@ import { mountSpreadControls } from './spread.js';
 import { mountDecorations, decorationTray } from './customise.js';
 import { buildRecipeBody } from './recipe.js';
 import { bookMenu } from './desk.js';
-import { shareRecipe, shareBook } from './share.js';
+import { shareRecipe, shareBook, importMarkdown } from './share.js';
+import { modal } from '../lib/dom.js';
 
 /* The cookbook, as one book.
 
@@ -196,14 +197,45 @@ export function renderBook(host, bookId, query) {
       iconButton('share', 'Share this cookbook', { onClick: () => shareBook(book) }),
       iconButton('plus', 'Add a recipe', {
         primary: true,
-        onClick: () => {
-          const recipe = store.addRecipe({ bookId: book.id });
-          location.hash = `#/recipe/${recipe.id}?edit=1`;
-        },
+        onClick: () => addRecipeTo(book),
       }),
     );
   }
   paintActions();
+}
+
+/* --- adding a recipe ---------------------------------------------------------- */
+
+/* All three ways in, from the one button inside the cookbook you are standing
+   in — which is where a person looks for "add a recipe", rather than an
+   unlabelled icon in the corner of the desk. Whichever you pick, it lands in
+   this cookbook. */
+function addRecipeTo(book) {
+  const choose = (label, description, onPick) =>
+    el('button', { class: 'pick-row add-choice', type: 'button', onClick: () => {
+      document.querySelector('.modal-backdrop')?.remove();
+      onPick();
+    } }, [
+      el('span', { class: 'pick-name', text: label }),
+      el('span', { class: 'add-choice-sub', text: description }),
+    ]);
+
+  modal({
+    title: `Add to “${book.title}”`,
+    body: el('div', { class: 'add-choices' }, [
+      choose('Write it out', 'A blank page to type onto.', () => {
+        const recipe = store.addRecipe({ bookId: book.id });
+        location.hash = `#/recipe/${recipe.id}?edit=1`;
+      }),
+      choose('From a link, screenshot or words', 'Read it in from somewhere else.', () => {
+        location.hash = `#/import?book=${book.id}`;
+      }),
+      choose('From a shared file', 'A .md recipe someone sent you.', () => {
+        importMarkdown(book.id);
+      }),
+    ]),
+    actions: [{ label: 'Cancel' }],
+  });
 }
 
 /* --- the flow ---------------------------------------------------------------- */

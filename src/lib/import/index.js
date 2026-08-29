@@ -16,6 +16,20 @@
 import { recipeFromHtml, textFromHtml } from './jsonld.js';
 import { extractWithOllama, ollamaAvailable } from './ollama.js';
 
+/**
+ * Is this page allowed to talk to a program on your own machine at all?
+ *
+ * Browsers refuse to let an HTTPS page reach http://localhost — it is a
+ * deliberate protection, not a bug, and no header or setting on Ollama's side
+ * can lift it. So AI import works when the app is served locally and cannot
+ * work from the deployed site, whatever Ollama is doing. Saying so is far
+ * better than a request that fails for no visible reason.
+ */
+export function localModelReachable() {
+  if (location.protocol !== 'https:') return true;
+  return /^(localhost|127\.|\[::1\])/.test(location.hostname);
+}
+
 /** Where the page fetcher lives. Empty until the Worker is deployed. */
 export function proxyUrl() {
   return import.meta.env.VITE_FETCH_PROXY || '';
@@ -31,9 +45,11 @@ export function proxyConfigured() {
  */
 export async function importCapabilities(settings) {
   const ollama = settings?.ollama || {};
+  const reachable = localModelReachable();
   return {
     proxy: proxyConfigured(),
-    ollama: ollama.enabled ? await ollamaAvailable(ollama.url) : false,
+    blockedByOrigin: !reachable,
+    ollama: reachable && ollama.enabled ? await ollamaAvailable(ollama.url) : false,
     model: ollama.model,
   };
 }
@@ -73,6 +89,13 @@ export async function importFromUrl(url, settings) {
 
 /** Import from words — pasted, or scraped off a page with no structured data. */
 export async function importFromText(text, settings) {
+  if (!localModelReachable()) {
+    throw new Error(
+      'This page is served over HTTPS, and browsers do not let an HTTPS page '
+      + 'talk to a program on your own machine. Run the app locally to use the '
+      + 'model — the README has the one command.',
+    );
+  }
   const ollama = settings?.ollama || {};
   if (!ollama.enabled) {
     throw new Error('Turn on Ollama in settings to read a recipe from text.');
@@ -97,6 +120,13 @@ export async function importFromText(text, settings) {
  * because those pages cannot be fetched at all.
  */
 export async function importFromImage(file, settings) {
+  if (!localModelReachable()) {
+    throw new Error(
+      'This page is served over HTTPS, and browsers do not let an HTTPS page '
+      + 'talk to a program on your own machine. Run the app locally to use the '
+      + 'model — the README has the one command.',
+    );
+  }
   const ollama = settings?.ollama || {};
   if (!ollama.enabled) {
     throw new Error('Turn on Ollama in settings to read a recipe from a picture.');

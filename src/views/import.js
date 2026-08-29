@@ -4,6 +4,7 @@ import { formatIngredient } from '../lib/recipe.js';
 import {
   importFromUrl, importFromText, importFromImage, importCapabilities, proxyConfigured,
 } from '../lib/import/index.js';
+import { importMarkdown } from './share.js';
 
 /* Bringing a recipe in from somewhere else.
 
@@ -71,6 +72,19 @@ export function renderImport(host, query) {
       }),
     ]),
 
+    section('From a shared file', [
+      el('div', { class: 'import-row' }, [
+        el('button', {
+          class: 'btn btn-sm', type: 'button', text: 'Choose a .md file',
+          onClick: () => importMarkdown(bookId),
+        }),
+      ]),
+      el('p', {
+        class: 'settings-sub',
+        text: 'A recipe or a whole cookbook someone shared with you. No model involved.',
+      }),
+    ]),
+
     section('From words', [
       text,
       el('div', { class: 'import-row' }, [
@@ -94,6 +108,7 @@ export function renderImport(host, query) {
   async function paintCapabilities() {
     const can = await importCapabilities(store.state.settings);
     clear(status);
+
     if (can.ollama) {
       status.append(el('p', {
         class: 'settings-sub is-ready',
@@ -101,11 +116,29 @@ export function renderImport(host, query) {
       }));
       return;
     }
+
+    // The commonest reason, and the one nothing on this page can fix: an
+    // HTTPS page is not allowed to reach a program on your own machine. Say
+    // that outright rather than letting it look like Ollama is broken.
+    if (can.blockedByOrigin) {
+      status.append(
+        el('p', {
+          class: 'settings-sub sync-error',
+          text: 'Reading with a model needs the app running on this Mac. Browsers do not let a page served over the internet talk to a program on your own machine — so this works from the local copy, and cannot work from here.',
+        }),
+        el('p', {
+          class: 'settings-sub',
+          text: 'Everything else on this page still works: a shared file, and links to sites that publish their recipe as data.',
+        }),
+      );
+      return;
+    }
+
     status.append(el('p', {
       class: 'settings-sub',
       text: store.state.settings.ollama?.enabled
         ? 'Ollama is not answering. Start it, or check the address in settings.'
-        : 'Ollama is off, so only links to sites that publish their recipe as data will work. Turn it on in settings to read screenshots and pasted text.',
+        : 'Ollama is off. Turn it on in settings to read screenshots and pasted text.',
     }));
   }
 
