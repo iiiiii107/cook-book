@@ -124,7 +124,7 @@ export function renderImport(host, query) {
       status.append(
         el('p', {
           class: 'settings-sub sync-error',
-          text: 'Reading with a model needs the app running on this Mac. Browsers do not let a page served over the internet talk to a program on your own machine — so this works from the local copy, and cannot work from here.',
+          text: 'The model is set to an http address, and this page is served over https — browsers do not allow that. Start the tunnel on your Mac and paste the https address it prints into Settings, and this will work from here and from your iPad.',
         }),
         el('p', {
           class: 'settings-sub',

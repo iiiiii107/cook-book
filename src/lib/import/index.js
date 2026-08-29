@@ -25,9 +25,13 @@ import { extractWithOllama, ollamaAvailable } from './ollama.js';
  * work from the deployed site, whatever Ollama is doing. Saying so is far
  * better than a request that fails for no visible reason.
  */
-export function localModelReachable() {
+export function localModelReachable(ollamaUrl) {
+  // From an http page — the local copy — anything goes.
   if (location.protocol !== 'https:') return true;
-  return /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  // From an https page, only an https address is allowed. A tunnel gives
+  // Ollama one, which is what makes this work from the deployed site and from
+  // the iPad; plain http://localhost is blocked and no setting changes that.
+  return /^https:/i.test(String(ollamaUrl || ''));
 }
 
 /** Where the page fetcher lives. Empty until the Worker is deployed. */
@@ -45,7 +49,7 @@ export function proxyConfigured() {
  */
 export async function importCapabilities(settings) {
   const ollama = settings?.ollama || {};
-  const reachable = localModelReachable();
+  const reachable = localModelReachable(ollama.url);
   return {
     proxy: proxyConfigured(),
     blockedByOrigin: !reachable,
@@ -89,14 +93,14 @@ export async function importFromUrl(url, settings) {
 
 /** Import from words — pasted, or scraped off a page with no structured data. */
 export async function importFromText(text, settings) {
-  if (!localModelReachable()) {
+  const ollama = settings?.ollama || {};
+  if (!localModelReachable(ollama.url)) {
     throw new Error(
-      'This page is served over HTTPS, and browsers do not let an HTTPS page '
-      + 'talk to a program on your own machine. Run the app locally to use the '
-      + 'model — the README has the one command.',
+      'This page is served over HTTPS, so it can only reach the model at an '
+      + 'https address. Start the tunnel and paste the address it prints into '
+      + 'Settings — or use the local copy of the app.',
     );
   }
-  const ollama = settings?.ollama || {};
   if (!ollama.enabled) {
     throw new Error('Turn on Ollama in settings to read a recipe from text.');
   }
@@ -120,14 +124,14 @@ export async function importFromText(text, settings) {
  * because those pages cannot be fetched at all.
  */
 export async function importFromImage(file, settings) {
-  if (!localModelReachable()) {
+  const ollama = settings?.ollama || {};
+  if (!localModelReachable(ollama.url)) {
     throw new Error(
-      'This page is served over HTTPS, and browsers do not let an HTTPS page '
-      + 'talk to a program on your own machine. Run the app locally to use the '
-      + 'model — the README has the one command.',
+      'This page is served over HTTPS, so it can only reach the model at an '
+      + 'https address. Start the tunnel and paste the address it prints into '
+      + 'Settings — or use the local copy of the app.',
     );
   }
-  const ollama = settings?.ollama || {};
   if (!ollama.enabled) {
     throw new Error('Turn on Ollama in settings to read a recipe from a picture.');
   }
