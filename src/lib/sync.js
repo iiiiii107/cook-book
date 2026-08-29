@@ -155,6 +155,7 @@ export async function restoreSession() {
     } else {
       currentUser = null;
       lastError = null;
+      photoSync = PHOTO_SYNC.UNKNOWN;
       assets.useCloud(null);
       await storage.use(null);
     }
@@ -194,16 +195,57 @@ export async function signOutOfSync() {
 
 /* ---------- photographs ---------- */
 
-/** The Storage half: upload on save, fetch on a local miss. */
+/* Photographs are the one thing that needs Firebase Storage, and Storage is
+   the one thing that needs a paid plan. Everything else — cookbooks, recipes,
+   the plan, doodles, stickers — syncs perfectly well on the free tier.
+
+   So this is not assumed to work. The first upload finds out; if Storage is
+   not there, photo sync switches itself off for the session and says so,
+   rather than retrying forever and filling the console with failures. The
+   photographs stay on the device that took them, and travel in the .zip
+   backup, which is exactly what happens with sync off entirely. */
+
+export const PHOTO_SYNC = { UNKNOWN: 'unknown', ON: 'on', UNAVAILABLE: 'unavailable' };
+
+let photoSync = PHOTO_SYNC.UNKNOWN;
+
+/** Whether photographs are following you between devices, and if not, why. */
+export function photoSyncState() {
+  return photoSync;
+}
+
+/** A Storage failure that means "the bucket isn't there", not "try again". */
+function storageMissing(err) {
+  const code = String(err?.code || '');
+  const message = String(err?.message || err);
+  return code.includes('unknown')
+    || code.includes('unauthorized')
+    || code.includes('project-not-found')
+    || /storage\/(unknown|unauthorized)|no bucket|not been set up|does not exist/i.test(message);
+}
+
 function createPhotoCloud(uid) {
   return {
     async upload(id, blob) {
-      const { storageSdk, bucket } = await firebase();
-      const ref = storageSdk.ref(bucket, `users/${uid}/assets/${id}`);
-      await storageSdk.uploadBytes(ref, blob, { contentType: blob.type || 'image/webp' });
+      if (photoSync === PHOTO_SYNC.UNAVAILABLE) return;
+      try {
+        const { storageSdk, bucket } = await firebase();
+        const ref = storageSdk.ref(bucket, `users/${uid}/assets/${id}`);
+        await storageSdk.uploadBytes(ref, blob, { contentType: blob.type || 'image/webp' });
+        photoSync = PHOTO_SYNC.ON;
+      } catch (err) {
+        if (!storageMissing(err)) throw err;
+        photoSync = PHOTO_SYNC.UNAVAILABLE;
+        console.info(
+          'Firebase Storage is not enabled on this project, so photographs stay '
+          + 'on the device that added them. Everything else still syncs.',
+        );
+        announce();
+      }
     },
 
     async download(id) {
+      if (photoSync === PHOTO_SYNC.UNAVAILABLE) return null;
       const { storageSdk, bucket } = await firebase();
       const ref = storageSdk.ref(bucket, `users/${uid}/assets/${id}`);
       const url = await storageSdk.getDownloadURL(ref);
@@ -213,6 +255,7 @@ function createPhotoCloud(uid) {
     },
 
     async remove(id) {
+      if (photoSync === PHOTO_SYNC.UNAVAILABLE) return;
       const { storageSdk, bucket } = await firebase();
       await storageSdk.deleteObject(storageSdk.ref(bucket, `users/${uid}/assets/${id}`));
     },

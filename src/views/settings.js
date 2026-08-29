@@ -3,6 +3,7 @@ import { store } from '../lib/store.js';
 import { makeBackup, restoreBackup, backupFilename } from '../lib/backup.js';
 import {
   syncConfigured, currentAccount, syncError, signIn, signOutOfSync, onAccountChange,
+  photoSyncState, PHOTO_SYNC,
 } from '../lib/sync.js';
 import { ollamaModels } from '../lib/import/ollama.js';
 import { applyTheme, PALETTE_KEYS, SPINE_KEYS, PRESETS, WOODS, FACES, FACE_LABELS } from '../lib/theme.js';
@@ -214,9 +215,12 @@ function syncCard() {
           }),
         ]),
       );
+      const photos = photoSyncState();
       body.append(el('p', {
         class: 'settings-sub',
-        text: error || 'Your cookbooks, photographs and plan follow you to every device you sign in on.',
+        text: error || (photos === PHOTO_SYNC.UNAVAILABLE
+          ? 'Your cookbooks, recipes and plan follow you to every device. Photographs stay on the device that added them — that needs Firebase Storage, which is on the paid plan. They still travel in a backup.'
+          : 'Your cookbooks, recipes and plan follow you to every device you sign in on.'),
       }));
       return;
     }

@@ -238,66 +238,60 @@ everything stays in this browser — and it says so plainly in Settings.
 
 ### Firebase, for syncing between your Mac and iPad
 
-This reuses the **`minutes-to-spare`** project your other two apps already use.
-The cookbook writes to `users/{uid}/app/cookbook` and `users/{uid}/recipes`,
-so it cannot collide with 10-minutes-to-spare (`app/state`) or calendartospare
-(`app/calendar`).
+This reuses the **`minutes-to-spare`** project the other two apps already use.
+The cookbook writes to `users/{uid}/app/cookbook` and `users/{uid}/recipes`, so
+it cannot collide with 10-minutes-to-spare (`app/state`) or calendartospare
+(`app/calendar`). The rules that project already has —
+`match /users/{uid}/{document=**}` — cover both, so there is usually nothing to
+deploy.
 
-1. **Turn on Storage and billing.** In the [Firebase console](https://console.firebase.google.com/project/minutes-to-spare/storage),
-   open Storage and create a bucket. It will ask you to upgrade to the
-   pay-as-you-go (Blaze) plan — photographs cannot be stored on the free plan.
+**On the free plan, everything syncs except photographs.** Cookbooks, recipes,
+the plan, doodles and stickers all follow you between devices. Photographs need
+Firebase Storage, which is only on the paid Blaze plan; without it they stay on
+the device that added them and travel in the `.zip` backup instead. The app
+works this out for itself on the first upload and says so in Settings — there
+is nothing to configure and nothing that keeps failing in the background.
 
-   The free allowance is 5 GB stored and 1 GB downloaded a day. At roughly
-   150 KB per photograph after re-encoding, that is around 33,000 of them, so
-   for one household this stays at £0.
+So the whole of the free setup is one step:
 
-   **Set a budget alert while you are there — but know what it does.** A Google
-   Cloud budget *notifies* you; it does not stop the service. There is no
-   "spending cap" switch. Setting the alert low, at £1, means you hear about
-   anything unusual immediately, which is the real protection.
-
-2. **Sign the CLI in**, from this folder:
-
-   ```bash
-   npx firebase login
-   ```
-
-3. **Publish the rules.** They lock every document and every photograph to the
-   account that owns it:
-
-   ```bash
-   npx firebase deploy --only firestore:rules,storage
-   ```
-
-4. **Give the site the config.** In the console, Project settings → General →
-   Your apps → the web app → Config. Copy the whole `{ ... }` object, then:
+1. In the [console](https://console.firebase.google.com/project/minutes-to-spare/settings/general),
+   Project settings → General → Your apps → the web app → Config. Copy the
+   whole `{ ... }` object, then from this folder:
 
    ```bash
    gh secret set VITE_FIREBASE_CONFIG
    ```
 
-   Paste it, press Enter, then Ctrl-D. Push anything (or re-run the deploy
-   workflow) and the site is built with sync attached.
+   Paste it, press Enter, then Ctrl-D. Push anything and the site is built with
+   sync attached.
 
 The Firebase web config is not a secret — it ships inside the built JavaScript
-of every Firebase site, including your other two. What protects your data is
-the rules from step 3, not the config.
+of every Firebase site, including the other two. What protects the data is the
+rules, not the config.
 
-5. **Lock the project to your own account.** The rules already mean nobody can
-   read or write *your* data. But Google sign-in accepts any Google account,
-   and the config is public, so in principle a stranger could sign in and store
-   *their* cookbooks on your bill. Once you have signed in once, find your user
-   id in the Firebase console under Authentication → Users, and add it to
-   `firestore.rules` and `storage.rules`:
+**If you ever want photographs to sync too**, upgrade the project to Blaze and
+create a Storage bucket, then deploy the rules in this repo:
 
-   ```
-   allow read, write: if request.auth != null
-                      && request.auth.uid == uid
-                      && uid in ['your-uid-here'];
-   ```
+```bash
+npx firebase login
+npx firebase deploy --only firestore:rules,storage
+```
 
-   Then `npx firebase deploy --only firestore:rules,storage` again. Now nobody
-   else can put a byte in, and £0 is not a hope but a fact.
+Nothing else changes — the app notices Storage has appeared and starts using
+it. Note that a Google Cloud budget *alert* emails you; it does not stop the
+service. There is no spending-cap switch.
+
+**Locking the project to your own account.** The rules mean nobody can read or
+write *your* data, but Google sign-in accepts any account and the config is
+public, so in principle a stranger could store *their* data on the project.
+After signing in once, take your user id from the console under Authentication
+→ Users and add it to the rules:
+
+```
+allow read, write: if request.auth != null
+                   && request.auth.uid == uid
+                   && uid in ['your-uid-here'];
+```
 
 ### Ollama, for reading recipes with a model
 
