@@ -315,13 +315,37 @@ data — works on every device without it.
    brew install ollama && ollama pull qwen2.5vl:7b
    ```
 
-2. **Let the site talk to it.** Ollama refuses requests from a browser unless
-   the site is named. This sets that permanently and starts it:
+2. **Let the site talk to it.** Ollama refuses every request a browser makes
+   unless the site is named in `OLLAMA_ORIGINS`, and the refusal looks exactly
+   like Ollama being switched off.
+
+   Setting it is fiddlier than it should be. `launchctl setenv` only lasts
+   until you log out, and Homebrew rewrites its own service definition every
+   time it starts, so an edit there is lost. `setup/com.cookbook.ollama.plist`
+   is a login agent that runs Ollama with the variable baked in:
 
    ```bash
-   launchctl setenv OLLAMA_ORIGINS "https://iiiiii107.github.io,http://localhost:5175"
-   brew services restart ollama
+   cp setup/com.cookbook.ollama.plist ~/Library/LaunchAgents/
+   brew services stop ollama
+   launchctl load ~/Library/LaunchAgents/com.cookbook.ollama.plist
    ```
+
+   Check it took, from a *browser* origin rather than the terminal:
+
+   ```bash
+   curl -si -X OPTIONS http://localhost:11434/api/chat \
+     -H "Origin: https://iiiiii107.github.io" \
+     -H "Access-Control-Request-Method: POST" | grep -i access-control
+   ```
+
+   You want to see `Access-Control-Allow-Origin` come back. Nothing means the
+   variable did not apply.
+
+   One thing to know if a download ever fails: `ollama pull` prints its error
+   to stdout and still exits 0, so a failure looks like success to any script.
+   And a pull interrupted partway leaves `-partial` files in
+   `~/.ollama/models/blobs` that make every later attempt fail with `EOF`.
+   Delete them and pull again.
 
 3. **Turn it on** in Settings → Reading recipes with a model, then press
    *Check the connection*.

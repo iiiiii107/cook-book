@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Runs Ollama at login with OLLAMA_ORIGINS baked in.
+
+       Homebrew's own service cannot carry that variable: `brew services`
+       rewrites its plist every time it starts, so any edit is lost, and
+       `launchctl setenv` only lasts until you log out. Without the variable
+       Ollama refuses every request the browser makes, which looks exactly
+       like Ollama being switched off. -->
+  <key>Label</key>
+  <string>com.cookbook.ollama</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/ollama</string>
+    <string>serve</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>OLLAMA_ORIGINS</key>
+    <string>https://iiiiii107.github.io,http://localhost:5175,http://localhost:5173,http://localhost:4173</string>
+    <key>OLLAMA_FLASH_ATTENTION</key>
+    <string>1</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/ollama.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/ollama.err</string>
+</dict>
+</plist>
