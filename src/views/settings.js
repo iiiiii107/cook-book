@@ -239,8 +239,13 @@ function syncCard() {
           toast('Sign-in did not go through.');
         }),
       }),
-      error && el('p', { class: 'settings-sub sync-error', text: error }),
     );
+
+    // Native append stringifies null into the page as the word "null" — el()
+    // guards against that for its children, but append() does not.
+    if (error) {
+      body.append(el('p', { class: 'settings-sub sync-error', text: error }));
+    }
   }
 
   paint();

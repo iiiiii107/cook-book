@@ -52,6 +52,21 @@ export function clear(node) {
   return node;
 }
 
+/**
+ * Append children, skipping the empty ones.
+ *
+ * `el()` drops null and false from its children, but the DOM's own `append`
+ * stringifies them — `body.append(cond && node)` puts the literal word "null"
+ * on the page when `cond` is false. This makes the two behave the same.
+ */
+export function add(node, ...children) {
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    node.append(child.nodeType ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
 export function toast(message) {
   document.querySelector('.toast')?.remove();
   const node = el('div', { class: 'toast', role: 'status', text: message });
