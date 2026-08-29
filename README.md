@@ -281,17 +281,19 @@ Nothing else changes — the app notices Storage has appeared and starts using
 it. Note that a Google Cloud budget *alert* emails you; it does not stop the
 service. There is no spending-cap switch.
 
-**Locking the project to your own account.** The rules mean nobody can read or
-write *your* data, but Google sign-in accepts any account and the config is
-public, so in principle a stranger could store *their* data on the project.
-After signing in once, take your user id from the console under Authentication
-→ Users and add it to the rules:
+**The rules are already right for a shared app.** Anyone may sign in, and each
+person can read and write only the documents filed under their own account —
+nobody can see anyone else's cookbooks, including whoever owns the project.
 
-```
-allow read, write: if request.auth != null
-                   && request.auth.uid == uid
-                   && uid in ['your-uid-here'];
-```
+There is no need to restrict this to a single account, and doing so would shut
+everyone else out of all three apps in the project, since Firestore rules
+belong to the project rather than to an app.
+
+The one thing to know about running it open on the free plan: the quotas are
+per project, not per person (50,000 reads and 20,000 writes a day). Reaching
+them means the apps stop saving until the quota resets the next day — the free
+plan cannot bill you, only stop. One household is nowhere near that; a few
+hundred people would be worth watching.
 
 ### Ollama, for reading recipes with a model
 
