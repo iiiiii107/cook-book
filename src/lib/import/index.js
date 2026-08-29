@@ -67,10 +67,23 @@ async function fetchPage(url) {
   }
 
   const response = await fetch(`${proxyUrl()}?url=${encodeURIComponent(url)}`);
-  if (!response.ok) {
-    throw new Error(`That page could not be fetched (${response.status}).`);
+  if (response.ok) return response.text();
+
+  // Plenty of recipe sites refuse anything that is not a person with a
+  // browser — Serious Eats and Allrecipes among them. That is their right,
+  // and there is a perfectly good way round it that does not involve
+  // pretending to be something else.
+  const body = await response.text().catch(() => '');
+  if (/40[13]/.test(body) || response.status === 403) {
+    throw new Error(
+      'That site will not let the app fetch its pages. Open the recipe, copy '
+      + 'the text, and paste it below — or take a screenshot.',
+    );
   }
-  return response.text();
+  if (/404/.test(body)) {
+    throw new Error('That page was not found. Check the link, or paste the recipe text instead.');
+  }
+  throw new Error(`That page could not be fetched (${response.status}). Paste the text instead.`);
 }
 
 /**

@@ -53,7 +53,7 @@ export function renderImport(host, query) {
       el('p', {
         class: 'settings-sub',
         text: proxyConfigured()
-          ? 'Recipe blogs usually publish their recipe as data — those come in exactly, with no AI involved. Instagram and TikTok cannot be read from a link; use a screenshot.'
+          ? 'Most recipe blogs publish their recipe as data, and those come in exactly, with no model involved. Some sites refuse to be read at all, and Instagram and TikTok cannot be read from a link — copy the text or take a screenshot for those.'
           : 'Not set up yet — the fetch helper has not been deployed. Paste the text instead, which always works.',
       }),
     ]),
