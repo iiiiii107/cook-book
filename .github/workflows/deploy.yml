@@ -28,9 +28,10 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          # Absent until sync is switched on in Phase 4; the app stays local
-          # without it rather than failing to build.
+          # Both are optional. Absent, the app simply says so and carries on:
+          # no sync without the first, no link import without the second.
           VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
+          VITE_FETCH_PROXY: ${{ secrets.VITE_FETCH_PROXY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
