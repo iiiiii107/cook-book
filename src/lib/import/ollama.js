@@ -28,14 +28,21 @@ const SCHEMA = {
     steps: { type: 'array', items: { type: 'string' } },
     notes: { type: 'string' },
   },
-  required: ['title', 'ingredients', 'steps'],
+  // Servings and times are required on purpose. Left optional, the model
+  // simply omitted them — even with "serves 6" and "prep 20 min" plainly in
+  // the text — and the recipe arrived with no portions and no timings. A
+  // required field it cannot find comes back as 0, which the reader below
+  // turns into the sensible default.
+  required: ['title', 'servings', 'prepMinutes', 'cookMinutes', 'ingredients', 'steps'],
 };
 
 const SYSTEM = [
   'You read recipes and return them as structured data.',
-  'Copy the quantities exactly as written; never convert, round or invent them.',
+  'Write every quantity as digits with its unit, even when the text spells it out: "half a kilo" is "500 g", "a tin" is "1 tin", "a couple of" is "2".',
+  'Never convert between units, never round, and never invent an amount that is not there — an ingredient given without one stays without one.',
   'Each ingredient is one string, as a cook would write it: "400 g spaghetti".',
   'Each step is one instruction, in order, without its number.',
+  'Times and servings belong in their own fields and must never appear as a step: a line like "Prep 20 min, cook 45 min" is not something the cook does.',
   'If something is genuinely not stated, leave it out rather than guessing.',
   'Put anything that is advice rather than an instruction into notes.',
 ].join(' ');
@@ -146,7 +153,11 @@ export function toRecipe(data, { bookId } = {}) {
 
   (data.steps || []).forEach((text, i) => {
     const clean = String(text).replace(/^\s*\d+[.)]\s*/, '').trim();
-    if (clean) recipe.steps.push({ id: `s${i}${Date.now().toString(36)}`, text: clean });
+    // A step that is only timings is the recipe's header, not an instruction.
+    // The prompt asks the model not to do this; this is what catches it when
+    // it does anyway.
+    if (!clean || /^(prep|preparation|cook(ing)?|total|serves|servings|makes)\b[^.]*$/i.test(clean)) return;
+    recipe.steps.push({ id: `s${i}${Date.now().toString(36)}`, text: clean });
   });
 
   const notes = String(data.notes || '').trim();
