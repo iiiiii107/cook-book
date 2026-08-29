@@ -47,6 +47,17 @@ describe('parseIngredient', () => {
   it('returns null for an empty line', () => {
     expect(parseIngredient('   ')).toBeNull();
   });
+
+  it('knows the countables European recipes actually use', () => {
+    // Found by running a real screenshot through the model: "3 sheets of
+    // gelatine" was parsing as a bare 3 with "sheets of gelatine" as the item.
+    expect(parseIngredient('3 sheets of gelatine')).toMatchObject({
+      qty: 3, unit: 'sheet', item: 'gelatine',
+    });
+    expect(parseIngredient('2 heads of broccoli')).toMatchObject({ qty: 2, unit: 'head' });
+    expect(parseIngredient('4 rashers of bacon')).toMatchObject({ qty: 4, unit: 'rasher' });
+    expect(parseIngredient('1 knob of butter')).toMatchObject({ qty: 1, unit: 'knob' });
+  });
 });
 
 describe('formatQty', () => {

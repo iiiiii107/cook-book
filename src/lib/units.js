@@ -13,6 +13,8 @@
    2. Anything that cannot be added is kept side by side rather than fudged —
       "2 tbsp + 100 ml olive oil" is more use to a cook than a made-up total. */
 
+import { formatUnit } from './recipe.js';
+
 /* Every family, as multiples of the family's base unit.
 
    `units` is what may be *read* — centilitres are understood if a recipe uses
@@ -60,6 +62,7 @@ const FAMILIES = [
    slices, but two lots of cloves add perfectly well. */
 const COUNTABLE = [
   'clove', 'slice', 'sprig', 'bunch', 'handful', 'can', 'jar', 'packet', 'pinch',
+  'sheet', 'stick', 'head', 'stalk', 'rasher', 'fillet', 'punnet', 'knob', 'drop',
 ];
 for (const unit of COUNTABLE) {
   FAMILIES.push({
@@ -206,7 +209,10 @@ export function formatAmount(entry) {
         return `${round(a.base)} ${a.unit}`.trim();
       }
       const { qty, unit } = fromBase(a.base, a.family);
-      return `${qty}${unit ? ` ${unit}` : ''}`;
+      // Through the same pluraliser the page uses, or the list reads
+      // "3 clove garlic" and "5 sheet gelatine".
+      const written = formatUnit(unit, qty);
+      return `${qty}${written ? ` ${written}` : ''}`;
     });
   return parts.join(' + ');
 }

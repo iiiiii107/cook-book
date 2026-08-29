@@ -104,6 +104,10 @@ describe('mergeIngredients', () => {
     expect(entries[0].from).toEqual(['Carbonara', 'Custard']);
   });
 
+  it('adds up the countables, so a shopping list is not split in two', () => {
+    expect(listOf('3 sheets of gelatine', '2 sheets of gelatine')).toEqual(['5 sheets gelatine']);
+  });
+
   it('counts unitless quantities', () => {
     expect(listOf('2 onions', '1 onion')).toEqual(['3 onion']);
   });

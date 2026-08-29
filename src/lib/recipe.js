@@ -30,6 +30,18 @@ export const UNITS = {
   can: 'can', cans: 'can', tin: 'can', tins: 'can',
   jar: 'jar', jars: 'jar',
   packet: 'packet', packets: 'packet', pack: 'packet',
+  // Countables that turn up constantly in European recipes and were being
+  // lost: "3 sheets of gelatine" parsed as a bare number with the unit stuck
+  // to the front of the item, so it could never be added up.
+  sheet: 'sheet', sheets: 'sheet',
+  stick: 'stick', sticks: 'stick',
+  head: 'head', heads: 'head',
+  stalk: 'stalk', stalks: 'stalk',
+  rasher: 'rasher', rashers: 'rasher',
+  fillet: 'fillet', fillets: 'fillet',
+  punnet: 'punnet', punnets: 'punnet',
+  knob: 'knob', knobs: 'knob',
+  drop: 'drop', drops: 'drop',
 };
 
 const VULGAR = {
@@ -128,7 +140,9 @@ const METRIC = new Set(['g', 'kg', 'mg', 'ml', 'cl', 'dl', 'l']);
 const COUNTABLE = {
   cup: 'cups', clove: 'cloves', slice: 'slices', sprig: 'sprigs',
   bunch: 'bunches', handful: 'handfuls', can: 'cans', jar: 'jars',
-  packet: 'packets', pinch: 'pinches',
+  packet: 'packets', pinch: 'pinches', sheet: 'sheets', stick: 'sticks',
+  head: 'heads', stalk: 'stalks', rasher: 'rashers', fillet: 'fillets',
+  punnet: 'punnets', knob: 'knobs', drop: 'drops',
 };
 
 /** 0.5 → "½", 1.5 → "1½", 250 → "250". Quantities read as a cook writes them. */
