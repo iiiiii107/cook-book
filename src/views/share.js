@@ -95,7 +95,10 @@ export function importMarkdown(bookId) {
 
     let parsed;
     try {
-      parsed = parseMarkdown(await file.text(), { bookId });
+      parsed = parseMarkdown(await file.text(), {
+        bookId,
+        fallbackTitle: file.name.replace(/\.[^.]+$/, ''),
+      });
     } catch (error) {
       console.warn('Could not read that file.', error);
       toast('That file could not be read.');
@@ -103,8 +106,15 @@ export function importMarkdown(bookId) {
     }
 
     if (!parsed.recipes.length) {
-      toast('No recipes found in that file.');
+      toast('Nothing recipe-shaped in that file — no ingredients or steps found.');
       return;
+    }
+
+    const thin = parsed.recipes.filter((r) => !r.ingredients.length || !r.steps.length);
+    if (thin.length) {
+      // Half an import is the thing worth noticing, and it used to happen
+      // silently: the title came in and nothing else.
+      console.warn('Some recipes came in incomplete:', thin.map((r) => r.title));
     }
 
     // A file that names a cookbook makes one, unless we were told where to put

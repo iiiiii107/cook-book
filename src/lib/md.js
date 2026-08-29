@@ -78,87 +78,159 @@ function readMeta(recipe, key, value) {
     case 'portions':
     case 'serves':
     case 'servings':
+    case 'yield':
+    case 'makes':
       recipe.servings = Number.parseInt(value, 10) || recipe.servings;
       break;
     case 'prep':
+    case 'prep time':
+    case 'preparation':
       recipe.time.prep = Number.parseInt(NUMBER.exec(value)?.[1] ?? value, 10) || 0;
       break;
     case 'cooking':
     case 'cook':
+    case 'cook time':
+    case 'cooking time':
       recipe.time.cook = Number.parseInt(NUMBER.exec(value)?.[1] ?? value, 10) || 0;
       break;
     case 'source':
+    case 'from':
+    case 'url':
       recipe.sourceUrl = value;
       break;
     case 'called':
+    case 'author':
+    case 'by':
       recipe.sourceLabel = value;
       break;
     default:
-      break;
+      return false;
   }
+  return true;
 }
+
+/* Which section a heading names.
+
+   Recipes in the wild do not agree on any of this. The headings may be h2, h3,
+   bold text or a plain label ending in a colon, and "Method" is just as likely
+   to be called Directions, Steps, Instructions or Preparation. Accepting only
+   one spelling meant a file imported its title and nothing else — which is
+   worse than refusing it, because it looks like it worked. */
+const SECTIONS = [
+  ['ingredients', /^(ingredient|you will need|you need|what you need|shopping)/],
+  ['steps', /^(method|direction|step|instruction|preparation|how to|to make|to cook)/],
+  ['notes', /^(note|tip|to serve|serving suggestion)/],
+];
+
+function sectionOf(text) {
+  const name = String(text).toLowerCase().replace(/[:*_#]/g, '').trim();
+  for (const [section, pattern] of SECTIONS) {
+    if (pattern.test(name)) return section;
+  }
+  return 'skip';
+}
+
+/** Is this line a heading of any of the shapes people actually write? */
+function headingText(line) {
+  const hash = /^#{2,6}[ \t]+(.+?)#*$/.exec(line);
+  if (hash) return hash[1];
+
+  const bold = /^\*\*(.+?)\*\*:?$/.exec(line);
+  if (bold) return bold[1];
+
+  const underlined = /^__(.+?)__:?$/.exec(line);
+  if (underlined) return underlined[1];
+
+  // "Ingredients:" on a line of its own — a label, not a sentence.
+  const label = /^([A-Za-z][A-Za-z ]{2,24}):$/.exec(line);
+  if (label) return label[1];
+
+  return null;
+}
+
+const BULLET = /^[-*•]\s+(.*)$/;
+const NUMBERED = /^\d+[.)]\s+(.*)$/;
+const META_BULLET = /^[-*]\s+([A-Za-z][A-Za-z ]{1,18}):\s*(.+)$/;
 
 /**
  * Read a shared file back.
  * @returns {{book: {title: string, subtitle: string}|null, recipes: object[]}}
  */
-export function parseMarkdown(text, { bookId } = {}) {
+export function parseMarkdown(text, { bookId, fallbackTitle } = {}) {
   const { meta, body } = frontmatter(String(text || '').replace(/\r\n/g, '\n'));
   const book = meta.cookbook
     ? { title: meta.cookbook, subtitle: meta.subtitle || '' }
     : null;
 
-  // A recipe begins at every top-level heading. Splitting on the heading
-  // rather than on a separator means a file someone has hand-edited, or one
-  // exported by something else entirely, still comes in.
-  const chunks = body.split(/^#[ \t]+/m).slice(1);
+  // A recipe begins at every top-level heading. A file with none at all is
+  // still one recipe — plenty of people write a recipe as a plain list.
+  const hasTop = /^#[ \t]+/m.test(body);
+  const chunks = hasTop
+    ? body.split(/^#[ \t]+/m).slice(1)
+    : (body.trim() ? [`${fallbackTitle || meta.recipe || 'Untitled recipe'}\n${body}`] : []);
+
   const recipes = [];
 
   for (const chunk of chunks) {
     const lines = chunk.split('\n');
     const recipe = newRecipe({ bookId, title: lines.shift().trim() || 'Untitled recipe' });
-    let section = 'meta';
+
+    // 'auto' means no section heading has been seen yet, so the shape of each
+    // line decides: bullets are things you need, numbers are things you do.
+    let section = 'auto';
 
     for (const raw of lines) {
       const line = raw.trim();
+      if (!line) continue;
 
-      const heading = /^##[ \t]+(.*)$/.exec(line);
+      const heading = headingText(line);
       if (heading) {
-        const name = heading[1].toLowerCase();
-        section = name.startsWith('ingredient') ? 'ingredients'
-          : name.startsWith('method') || name.startsWith('step') || name.startsWith('instruction') ? 'steps'
-            : name.startsWith('note') ? 'notes'
-              : 'skip';
+        section = sectionOf(heading);
         continue;
       }
 
-      if (section === 'meta') {
-        const bullet = /^[-*]\s+([^:]+):\s*(.*)$/.exec(line);
-        if (bullet) readMeta(recipe, bullet[1].trim().toLowerCase(), bullet[2].trim());
+      const metaBullet = META_BULLET.exec(line);
+      if (metaBullet && readMeta(recipe, metaBullet[1].trim().toLowerCase(), metaBullet[2].trim())) {
         continue;
       }
 
-      if (section === 'ingredients') {
-        const bullet = /^[-*]\s+(.*)$/.exec(line);
-        const parsed = bullet && parseIngredient(bullet[1]);
+      // A bare "Serves 4" or "Prep 20 min" line, with no bullet and no colon.
+      const bare = /^(serves|makes|prep(?:aration)?|cook(?:ing)?)\b[: ]+(.+)$/i.exec(line);
+      if (bare && section !== 'steps' && readMeta(recipe, bare[1].toLowerCase(), bare[2].trim())) {
+        continue;
+      }
+
+      const bullet = BULLET.exec(line);
+      const numbered = NUMBERED.exec(line);
+
+      if (section === 'ingredients' || (section === 'auto' && bullet)) {
+        const parsed = parseIngredient(bullet ? bullet[1] : line);
         if (parsed) recipe.ingredients.push(parsed);
         continue;
       }
 
-      if (section === 'steps') {
-        const numbered = /^(?:\d+[.)]|[-*])\s+(.*)$/.exec(line);
-        if (numbered?.[1]) {
-          recipe.steps.push({ id: `s${recipe.steps.length}${Date.now().toString(36)}`, text: numbered[1] });
+      if (section === 'steps' || (section === 'auto' && numbered)) {
+        const body_ = numbered ? numbered[1] : (bullet ? bullet[1] : line);
+        if (body_) {
+          recipe.steps.push({
+            id: `s${recipe.steps.length}${Date.now().toString(36)}`,
+            text: body_,
+          });
         }
         continue;
       }
 
-      if (section === 'notes' && line) {
+      if (section === 'notes') {
         recipe.notes = recipe.notes ? `${recipe.notes}\n\n${line}` : line;
       }
     }
 
-    recipes.push(recipe);
+    // A recipe with nothing in it is not one. Without this, any prose with a
+    // heading in it would import as an empty page — which looks like the
+    // import worked and is worse than being told it found nothing.
+    if (recipe.ingredients.length || recipe.steps.length || recipe.notes) {
+      recipes.push(recipe);
+    }
   }
 
   return { book, recipes };
