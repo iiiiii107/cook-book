@@ -206,6 +206,9 @@ function syncCard() {
           el('div', {}, [
             el('strong', { text: account.name || 'Signed in' }),
             el('div', { class: 'settings-sub', text: account.email || '' }),
+            // The account id, for locking the database rules to this account.
+            // Not a secret — it identifies you to the rules, nothing more.
+            el('div', { class: 'settings-sub account-uid', title: 'Your account id', text: account.uid }),
           ]),
           el('button', {
             class: 'btn btn-secondary btn-sm',

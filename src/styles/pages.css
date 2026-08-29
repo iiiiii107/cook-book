@@ -642,3 +642,12 @@ body[data-editing='1'] .recipe-steps li:empty::after {
   font-size: calc(11.5px * var(--text-scale));
   color: var(--muted);
 }
+
+/* The account id, for pasting into the database rules. Small and unobtrusive:
+   it is only ever needed once. */
+.account-uid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: calc(10px * var(--text-scale));
+  opacity: .6;
+  user-select: all;
+}
