@@ -295,11 +295,26 @@ allow read, write: if request.auth != null
 
 ### Ollama, for reading recipes with a model
 
-Free, private, offline, no key. It runs on this Mac only: a page served over
-HTTPS may not call `http://localhost` from another device, and Safari blocks it
-even locally, so this is **Chrome on the Mac**. Everything else — typing a
-recipe, importing a `.md`, or a link to a site that publishes its recipe as
-data — works on every device without it.
+Free, private, offline, no key. **It only works from the local copy**, and that
+is not a limitation of Ollama or of this app: browsers refuse to let a page
+served over the internet reach a program on your own machine. There is no
+setting, header or flag that lifts it.
+
+That matters less than it sounds. Import is the only feature affected —
+reading, cooking, planning, shopping lists, decorating and sync all work on the
+deployed site. And you do not need to *import* on the iPad, only for the recipe
+to be there afterwards, which it will be: import on the Mac, and it syncs.
+
+So: **double-click `Cook Book (local).command`** in the project folder when you
+want to bring a recipe in. It starts Ollama, starts the app, and opens the
+import screen.
+
+Two things that were tried and are not worth repeating. A Cloudflare quick
+tunnel gives Ollama a public https address, which does work — but the address
+is withdrawn without warning (ours lasted twenty minutes), so it cannot be
+relied on. ngrok's free plan no longer reliably includes a fixed address. A
+Tailscale Funnel would work permanently and for free if import from the iPad
+ever becomes worth another program running.
 
 1. **Install it and fetch a model.** It has to be a *vision* model — reading a
    screenshot is the only way to get a recipe off Instagram or TikTok, since
@@ -309,11 +324,11 @@ data — works on every device without it.
    brew install ollama && ollama pull qwen2.5vl:7b
    ```
 
-2. **Let the site talk to it.** Ollama refuses every request a browser makes
-   unless the site is named in `OLLAMA_ORIGINS`, and the refusal looks exactly
-   like Ollama being switched off.
+2. **Let the page talk to it.** Ollama refuses every browser request unless the
+   site is named in `OLLAMA_ORIGINS`, and the refusal looks exactly like Ollama
+   being switched off.
 
-   Setting it is fiddlier than it should be. `launchctl setenv` only lasts
+   Setting it is fiddlier than it should be: `launchctl setenv` only lasts
    until you log out, and Homebrew rewrites its own service definition every
    time it starts, so an edit there is lost. `setup/com.cookbook.ollama.plist`
    is a login agent that runs Ollama with the variable baked in:
@@ -328,21 +343,16 @@ data — works on every device without it.
 
    ```bash
    curl -si -X OPTIONS http://localhost:11434/api/chat \
-     -H "Origin: https://iiiiii107.github.io" \
+     -H "Origin: http://localhost:5175" \
      -H "Access-Control-Request-Method: POST" | grep -i access-control
    ```
 
-   You want to see `Access-Control-Allow-Origin` come back. Nothing means the
-   variable did not apply.
+   You want `Access-Control-Allow-Origin` back. Nothing means it did not apply.
 
-   One thing to know if a download ever fails: `ollama pull` prints its error
-   to stdout and still exits 0, so a failure looks like success to any script.
-   And a pull interrupted partway leaves `-partial` files in
-   `~/.ollama/models/blobs` that make every later attempt fail with `EOF`.
-   Delete them and pull again.
-
-3. **Turn it on** in Settings → Reading recipes with a model, then press
-   *Check the connection*.
+   Two more things worth knowing: `ollama pull` prints its error to stdout and
+   exits 0 regardless, so a failed download looks like success. And an
+   interrupted pull leaves `-partial` files in `~/.ollama/models/blobs` that
+   make every later attempt fail with `EOF` until they are deleted.
 
 ### Cloudflare, for importing from a link
 

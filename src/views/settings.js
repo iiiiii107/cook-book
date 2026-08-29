@@ -306,6 +306,18 @@ function ollamaCard(set, settings) {
     el('div', { class: 'field' }, [el('span', { class: 'label', text: 'Model' }), model]),
     el('div', { class: 'field-row' }, [
       el('button', { class: 'btn btn-secondary btn-sm', type: 'button', text: 'Check the connection', onClick: check }),
+      // Settings sync, so an address set on one device follows to the others.
+      // A one-tap way back to this machine saves retyping it.
+      el('button', {
+        class: 'btn btn-quiet btn-sm',
+        type: 'button',
+        text: 'Use this Mac',
+        onClick: () => {
+          url.value = 'http://localhost:11434';
+          set({ ollama: { ...store.state.settings.ollama, url: url.value } });
+          check();
+        },
+      }),
     ]),
     state,
   );

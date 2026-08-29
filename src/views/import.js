@@ -121,16 +121,29 @@ export function renderImport(host, query) {
     // HTTPS page is not allowed to reach a program on your own machine. Say
     // that outright rather than letting it look like Ollama is broken.
     if (can.blockedByOrigin) {
+      // Not a fault to fix — browsers will not let a page from the internet
+      // reach a program on your own machine, and nothing here can change that.
+      // Reading happens on the Mac; the recipe syncs back to this device.
       status.append(
         el('p', {
-          class: 'settings-sub sync-error',
-          text: 'The model is set to an http address, and this page is served over https — browsers do not allow that. Start the tunnel on your Mac and paste the https address it prints into Settings, and this will work from here and from your iPad.',
+          class: 'settings-sub',
+          text: 'Reading a screenshot or pasted text happens on your Mac. Open “Cook Book (local)” from the project folder, import there, and the recipe will be here within seconds.',
         }),
         el('p', {
           class: 'settings-sub',
-          text: 'Everything else on this page still works: a shared file, and links to sites that publish their recipe as data.',
+          text: 'A shared .md file works here, and so will links once the fetch helper is deployed.',
         }),
       );
+      return;
+    }
+
+    // On the local copy, but pointing somewhere that is not answering.
+    const url = store.state.settings.ollama?.url || '';
+    if (store.state.settings.ollama?.enabled && !/localhost|127\./.test(url)) {
+      status.append(el('p', {
+        class: 'settings-sub sync-error',
+        text: `The model is set to ${url}, which is not answering. If that was a temporary address, set it back to this Mac in Settings.`,
+      }));
       return;
     }
 
