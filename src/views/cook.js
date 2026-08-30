@@ -1,4 +1,4 @@
-import { el, iconButton, strikeSvg, toast, modal } from '../lib/dom.js';
+import { el, iconButton, strikeSvg, toast, modal, claimBodyFlag } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { createPagedSpread } from '../lib/paginate.js';
 import { scaleIngredients, formatIngredient, totalTime } from '../lib/recipe.js';
@@ -28,7 +28,6 @@ export function renderCook(host, recipeId) {
     return;
   }
 
-  document.body.dataset.cooking = '1';
   const wake = holdScreenAwake();
   const guard = (event) => {
     event.preventDefault();
@@ -42,8 +41,7 @@ export function renderCook(host, recipeId) {
   const leave = () => {
     window.removeEventListener('beforeunload', guard);
     wake.release();
-    delete document.body.dataset.cooking;
-    delete document.body.dataset.editing;
+    releaseFlag();
     location.hash = `#/recipe/${recipe.id}`;
   };
 
@@ -245,11 +243,14 @@ export function renderCook(host, recipeId) {
 
   draw();
 
+  // Holds the background re-render for as long as this page is on screen, and
+  // only ever releases its own claim.
+  const releaseFlag = claimBodyFlag('cooking', spread);
+
   const observer = new MutationObserver(() => {
     if (document.contains(spread)) return;
     window.removeEventListener('beforeunload', guard);
     wake.release();
-    delete document.body.dataset.cooking;
     observer.disconnect();
   });
   observer.observe(document.body, { childList: true, subtree: true });

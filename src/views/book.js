@@ -1,4 +1,4 @@
-import { el, clear, iconLink, iconButton } from '../lib/dom.js';
+import { el, clear, iconLink, iconButton, claimBodyFlag } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { sortRecipes, SORT_MODES, totalTime } from '../lib/recipe.js';
 import { createPagedSpread } from '../lib/paginate.js';
@@ -87,6 +87,7 @@ export function renderBook(host, bookId, query) {
      relative to their own recipe, so that a recipe growing — or the book being
      re-sorted — never drags anybody's photographs onto a different page. They
      are offset into the book's page numbering only for display. */
+  let releaseDecoFlag;
   const deco = mountDecorations({
     host: paged.viewport,
     paged,
@@ -122,7 +123,7 @@ export function renderBook(host, bookId, query) {
   deco.refresh();
 
   if (decorating) {
-    document.body.dataset.editing = '1';
+    releaseDecoFlag = claimBodyFlag('editing', paged.viewport);
     trayHost.append(decorationTray({ deco }));
     deco.setTool('move');
   }
@@ -159,7 +160,7 @@ export function renderBook(host, bookId, query) {
       actions.append(iconButton('check', 'Done', {
         primary: true,
         onClick: () => {
-          delete document.body.dataset.editing;
+          releaseDecoFlag?.();
           location.hash = `#/book/${book.id}`;
         },
       }));

@@ -1,4 +1,4 @@
-import { el, clear, iconLink, iconButton } from '../lib/dom.js';
+import { el, clear, iconLink, iconButton, claimBodyFlag } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { createPagedSpread } from '../lib/paginate.js';
 import { formatIngredient, totalTime } from '../lib/recipe.js';
@@ -52,6 +52,7 @@ export function renderRecipe(host, recipeId, query) {
   buildFlow(paged.flow, recipe, editing);
   paged.refresh();
 
+  let releaseDecoFlag;
   const deco = mountDecorations({
     host: paged.viewport,
     paged,
@@ -69,7 +70,7 @@ export function renderRecipe(host, recipeId, query) {
   paged.onSpreadChange = () => deco.refresh();
 
   if (decorating) {
-    document.body.dataset.editing = '1';
+    releaseDecoFlag = claimBodyFlag('editing', paged.viewport);
     trayHost.append(decorationTray({ deco }));
     deco.setTool('move');
   }
@@ -97,7 +98,7 @@ export function renderRecipe(host, recipeId, query) {
 function header(recipe, book, editing, decorating) {
   const actions = el('div', { class: 'scene-actions' });
   const leave = () => {
-    delete document.body.dataset.editing;
+    releaseDecoFlag?.();
     location.hash = `#/recipe/${recipe.id}`;
   };
 

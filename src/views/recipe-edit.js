@@ -1,3 +1,4 @@
+import { claimBodyFlag } from '../lib/dom.js';
 import { store } from '../lib/store.js';
 import { parseIngredient } from '../lib/recipe.js';
 
@@ -30,7 +31,7 @@ const isEnter = (event) =>
 const isBackspace = (event) => isKey(event, 'Backspace', 8);
 
 export function attachEditor({ recipe, flow, paged }) {
-  document.body.dataset.editing = '1';
+  const releaseFlag = claimBodyFlag('editing', flow);
 
   let timer = null;
 
@@ -108,7 +109,7 @@ export function attachEditor({ recipe, flow, paged }) {
   const observer = new MutationObserver(() => {
     if (document.contains(flow)) return;
     clearTimeout(timer);
-    delete document.body.dataset.editing;
+    releaseFlag();
     observer.disconnect();
   });
   observer.observe(document.body, { childList: true, subtree: true });

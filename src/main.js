@@ -143,6 +143,18 @@ function go() {
   scene.scrollTop = 0;
 }
 
+/* Re-render, unless a screen has asked to be left alone.
+
+   Two screens manage their own redrawing: the editor, because a rebuild takes
+   the caret with it, and cook mode, because a rebuild loses which step you are
+   on. Every path that re-renders in the background has to respect that — an
+   unguarded one here meant the auth state resolving a second after load tore
+   cook mode down and rebuilt it. */
+function maybeGo() {
+  if (document.body.dataset.editing || document.body.dataset.cooking) return;
+  go();
+}
+
 async function boot() {
   chrome();
   await store.init();
@@ -167,7 +179,7 @@ async function boot() {
         profile: { name: account.name, email: account.email || '' },
       });
     }
-    go();
+    maybeGo();
   });
 
   window.addEventListener('hashchange', go);
@@ -177,11 +189,7 @@ async function boot() {
   // themselves instead: the editor, because a rebuild would take the caret
   // with it, and cook mode, because a rebuild would lose which step you are
   // on and drop you back at the top of the method mid-recipe.
-  store.addEventListener('change', () => {
-    const held = document.body.dataset.editing === '1'
-      || document.body.dataset.cooking === '1';
-    if (!held) go();
-  });
+  store.addEventListener('change', maybeGo);
 
   go();
 

@@ -283,6 +283,40 @@ export function uid() {
 }
 
 /**
+ * Claim a flag on <body> for as long as this view is on screen.
+ *
+ * The flags that hold the background re-render (editing, cooking) used to be
+ * plain "1"s cleared by whoever noticed their node had gone. When a view was
+ * torn down and rebuilt, the *old* cleanup ran after the new view had already
+ * set the flag and cleared it — leaving the new view unprotected and looking,
+ * from the outside, exactly like the flag was never set.
+ *
+ * A token fixes it: only the render that set the flag can clear it.
+ *
+ * @param {string} name dataset key on <body>
+ * @param {Node} node the view's root; the flag lifts when it leaves the page
+ * @returns {() => void} release, for tearing down early
+ */
+export function claimBodyFlag(name, node) {
+  const token = Math.random().toString(36).slice(2, 10);
+  document.body.dataset[name] = token;
+
+  const release = () => {
+    // Someone else has claimed it since; leave theirs alone.
+    if (document.body.dataset[name] === token) delete document.body.dataset[name];
+    observer.disconnect();
+  };
+
+  const observer = new MutationObserver(() => {
+    if (document.contains(node)) return;
+    release();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  return release;
+}
+
+/**
  * A drag, reduced to its essentials. Calls `onMove` with the pointer position
  * relative to `node`, and `onEnd` once. Pointer capture means the drag keeps
  * working when the pointer leaves the element, which matters on a small screen.
