@@ -118,6 +118,7 @@ export function renderBook(host, bookId, query) {
 
   paged.onSpreadChange = () => {
     deco.refresh();
+    if (!visibleRecipes().some((r) => r.id === chosenId)) chosenId = null;
     paintActions();
   };
   deco.refresh();
@@ -142,16 +143,34 @@ export function renderBook(host, bookId, query) {
   /* The actions follow the book: on the cover they are about the cookbook, and
      on a recipe they are about that recipe. Nothing has to be selected first —
      whatever is open is what you act on. */
-  function currentRecipe() {
+  /* Which recipe each visible page belongs to, left to right, with duplicates
+     removed. Usually one; two when a recipe ends and the next begins on the
+     facing page. */
+  function visibleRecipes() {
     const starts = recipeStarts();
-    if (!starts.length) return null;
-    // The recipe covering the LEFT-hand leaf, not the right. With two recipes
-    // open at once the left one is what you turned to; taking the last would
-    // hand you the actions for whatever happens to have started opposite it.
+    if (!starts.length) return [];
+
     const first = paged.spread * paged.perView;
-    let found = null;
-    for (const start of starts) if (start.page <= first) found = start;
-    return found ? recipes.find((r) => r.id === found.id) : null;
+    const seen = [];
+    for (let i = 0; i < paged.perView; i += 1) {
+      const page = first + i;
+      if (page >= paged.pageCount) break;
+      let owner = null;
+      for (const start of starts) if (start.page <= page) owner = start;
+      if (owner && !seen.includes(owner.id)) seen.push(owner.id);
+    }
+    return seen.map((id) => recipes.find((r) => r.id === id)).filter(Boolean);
+  }
+
+  /* Which one the buttons act on. It follows the page you turned to, but you
+     can pick the other when both are open — before this, the right-hand recipe
+     could be read but never cooked, edited or shared. */
+  let chosenId = null;
+
+  function currentRecipe() {
+    const visible = visibleRecipes();
+    if (!visible.length) return null;
+    return visible.find((r) => r.id === chosenId) || visible[0];
   }
 
   function paintActions() {
@@ -168,11 +187,24 @@ export function renderBook(host, bookId, query) {
     }
 
     const recipe = currentRecipe();
+    const visible = visibleRecipes();
     actions.append(iconLink('desk', 'Back to the desk', '#/'));
 
     if (recipe) {
-      actions.append(
-        el('span', { class: 'action-label', text: recipe.title }),
+      // With two recipes open, the names become a choice rather than a label.
+      actions.append(visible.length > 1
+        ? el('div', { class: 'seg recipe-pick' }, visible.map((r) =>
+          el('button', {
+            class: 'seg-item',
+            type: 'button',
+            text: r.title,
+            'aria-pressed': String(r.id === recipe.id),
+            onClick: () => {
+              chosenId = r.id;
+              paintActions();
+            },
+          })))
+        : el('span', { class: 'action-label', text: recipe.title }),
         iconButton('edit', `Edit ${recipe.title}`, {
           onClick: () => { location.hash = `#/recipe/${recipe.id}?edit=1`; },
         }),

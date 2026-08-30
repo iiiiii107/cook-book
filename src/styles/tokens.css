@@ -45,6 +45,9 @@
   /* --- the one accent -------------------------------------------------- */
   --accent:      #46607A;
   --accent-soft: rgba(70, 96, 122, .09);
+  /* The band behind the step you are cooking. Solid, so the text on it stays
+     as readable as the rest of the page. */
+  --step-now:    #E4EAF0;
 
   /* Supporting hues. Reserved for spines and tags — never for interface. */
   --tag-1: #46607A;  --tag-2: #5F6B4A;  --tag-3: #47726A;
@@ -104,6 +107,7 @@
 
     --accent:      #8AA6C2;
     --accent-soft: rgba(138, 166, 194, .13);
+    --step-now:    #2C3742;
 
     --tag-1: #8AA6C2;  --tag-2: #929C77;  --tag-3: #79A79B;
     --tag-4: #BFAE7C;  --tag-5: #A08CA0;  --tag-6: #AC9C8A;
@@ -140,6 +144,7 @@
 
   --accent:      #8AA6C2;
   --accent-soft: rgba(138, 166, 194, .13);
+  --step-now:    #2C3742;
 
   --tag-1: #8AA6C2;  --tag-2: #929C77;  --tag-3: #79A79B;
   --tag-4: #BFAE7C;  --tag-5: #A08CA0;  --tag-6: #AC9C8A;

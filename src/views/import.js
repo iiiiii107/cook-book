@@ -81,7 +81,7 @@ export function renderImport(host, query) {
       ]),
       el('p', {
         class: 'settings-sub',
-        text: 'A recipe or a whole cookbook someone shared with you. No model involved.',
+        text: 'A single recipe joins the cookbook you came from. A whole cookbook arrives as a new one of its own, with all its recipes. No model involved, and it works on every device.',
       }),
     ]),
 

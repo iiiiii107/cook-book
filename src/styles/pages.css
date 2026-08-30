@@ -651,3 +651,12 @@ body[data-editing='1'] .recipe-steps li:empty::after {
   opacity: .6;
   user-select: all;
 }
+
+/* When two recipes are open at once, their names become the choice of which
+   one the buttons act on. */
+.recipe-pick .seg-item {
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

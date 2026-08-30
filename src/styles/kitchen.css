@@ -298,23 +298,20 @@ body[data-cooking='1'] .recipe-heading { font-size: calc(11px * var(--text-scale
   vector-effect: non-scaling-stroke;
 }
 
+/* The step you are on: a solid band with a rule down its edge. Nothing else on
+   the page is touched — dimming the rest made it harder to read, and while
+   cooking you want to glance ahead and back freely. */
 .recipe-steps li.is-current {
-  background: color-mix(in srgb, var(--lemon, var(--accent)) 10%, transparent);
+  background: var(--step-now);
+  border-left: 3px solid var(--accent);
+  margin-left: -1.4em;
+  padding-left: calc(1.4em - 3px);
+  padding-right: 10px;
+  border-radius: 0 3px 3px 0;
+  font-weight: 500;
 }
+.recipe-steps li.is-current::marker { color: var(--accent); font-weight: 600; }
 
-/* One scrim with a hole cut in it, rather than opacity on each element: a
-   photograph behind the current step dims with it, and nothing moves as the
-   focus travels down the page. */
-.cook-scrim {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: color-mix(in srgb, var(--paper) 62%, transparent);
-  opacity: 0;
-  transition: opacity .3s ease;
-}
-.cook-scrim.is-on { opacity: 1; }
 
 /* --- timers -------------------------------------------------------------------- */
 

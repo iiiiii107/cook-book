@@ -106,7 +106,6 @@ export function renderCook(host, recipeId) {
   stage.append(spread);
   host.append(stage);
 
-  const scrim = el('div', { class: 'cook-scrim', 'aria-hidden': 'true' });
 
   let controls;
   const paged = createPagedSpread({
@@ -117,7 +116,6 @@ export function renderCook(host, recipeId) {
     },
   });
   controls = mountSpreadControls({ spread, paged });
-  spread.append(scrim);
 
   let drawing = false;
   const deco = mountDecorations({
@@ -208,38 +206,31 @@ export function renderCook(host, recipeId) {
     }
   }
 
-  /* --- lighting the step you are on ------------------------------------------ */
+  /* --- the step you are on ---------------------------------------------------- */
 
-  /* The dimming is one scrim over the page with a hole cut in it, rather than
-     opacity on each element. That way a photograph or a doodle sitting behind
-     the current step dims with it, and nothing shifts as the focus moves. */
+  /* Marked by colouring the step itself, not by dimming everything else.
+     Greying the page made the rest harder to read, which is exactly wrong in a
+     kitchen: you want to glance ahead at what is coming and back at what you
+     just did. A solid band says "here" without taking anything away.
+
+     All this does now is follow the step if it has flowed onto another page. */
   function lightCurrentStep() {
     const node = paged.flow.querySelector('.recipe-steps li.is-current');
+    if (!node) return;
+
     const box = spread.getBoundingClientRect();
-    if (!node) {
-      scrim.style.clipPath = '';
-      scrim.classList.remove('is-on');
-      return;
-    }
-
     const rect = node.getBoundingClientRect();
-    // Off the visible spread — this step is on another page, so dim nothing.
-    if (rect.bottom < box.top || rect.top > box.bottom || !rect.height) {
-      scrim.classList.remove('is-on');
-      return;
-    }
+    if (rect.bottom >= box.top && rect.top <= box.bottom) return;
 
-    const pad = 10;
-    const x1 = ((rect.left - box.left - pad) / box.width) * 100;
-    const x2 = ((rect.right - box.left + pad) / box.width) * 100;
-    const y1 = ((rect.top - box.top - pad) / box.height) * 100;
-    const y2 = ((rect.bottom - box.top + pad) / box.height) * 100;
-
-    scrim.classList.add('is-on');
-    scrim.style.clipPath =
-      `polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0,` +
-      ` ${x1}% ${y1}%, ${x1}% ${y2}%, ${x2}% ${y2}%, ${x2}% ${y1}%, ${x1}% ${y1}%)`;
+    const flowBox = paged.flow.getBoundingClientRect();
+    const stride = paged.pageSize.width + Number.parseFloat(
+      getComputedStyle(paged.flow).columnGap || 0,
+    );
+    if (!stride) return;
+    const column = Math.floor((rect.left - flowBox.left) / stride);
+    paged.goToSpread(Math.floor(column / paged.perView));
   }
+
 
   draw();
 
