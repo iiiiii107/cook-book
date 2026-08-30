@@ -367,8 +367,13 @@ function segmented(options, value, onPick) {
 function currentColour(id) {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(`--${id}`).trim();
   if (/^#[0-9a-f]{6}$/i.test(raw)) return raw;
-  // Anything that isn't already a plain hex has to be resolved through canvas.
-  const probe = document.createElement('canvas').getContext('2d');
+  // Anything not already a plain hex is resolved through a canvas. A context
+  // is not guaranteed — it can be refused, and is absent outside a browser —
+  // and letting that throw would take the whole settings screen down over a
+  // swatch that could simply have opened on black.
+  const probe = document.createElement('canvas').getContext?.('2d');
+  if (!probe) return '#000000';
+  probe.fillStyle = '#000000';
   probe.fillStyle = raw || '#000000';
   return probe.fillStyle;
 }

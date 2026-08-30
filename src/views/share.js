@@ -117,10 +117,12 @@ export function importMarkdown(bookId) {
       console.warn('Some recipes came in incomplete:', thin.map((r) => r.title));
     }
 
-    // A file that names a cookbook makes one, unless we were told where to put
-    // it — importing into an open cookbook should not spawn a second.
+    // A file that names a cookbook always becomes one, even when opened from
+    // inside another: somebody sharing their whole collection means you to
+    // receive it whole, not have it tipped into whichever book you had open.
+    // Only a bare recipe joins the cookbook you came from.
     let target = bookId;
-    if (!target) {
+    if (parsed.book || !target) {
       const made = store.addBook({
         title: parsed.book?.title || file.name.replace(/\.[^.]+$/, ''),
         subtitle: parsed.book?.subtitle || '',

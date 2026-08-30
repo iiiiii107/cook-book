@@ -130,7 +130,8 @@ export function toHex(value) {
     : raw;
   if (/^#[0-9a-f]{6}$/i.test(resolved)) return resolved;
 
-  const probe = document.createElement('canvas').getContext('2d');
+  const probe = document.createElement('canvas').getContext?.('2d');
+  if (!probe) return '#000000';
   probe.fillStyle = '#000000';
   probe.fillStyle = resolved || '#000000';
   return probe.fillStyle;

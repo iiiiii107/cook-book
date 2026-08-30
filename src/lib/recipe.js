@@ -209,7 +209,22 @@ export function newBook({ title = 'New cookbook', subtitle = '', ...rest } = {})
   };
 }
 
-export function newRecipe({ bookId, title = 'Untitled recipe' } = {}) {
+/**
+ * A recipe, with anything already known about it carried through.
+ *
+ * The carrying-through matters: every import ends at `store.addRecipe(parsed)`,
+ * and when this took only a bookId and a title, every one of them — markdown,
+ * link, screenshot, pasted text — saved a recipe with the right name and no
+ * ingredients and no method. The review screen showed the real thing, and
+ * saving quietly emptied it.
+ *
+ * The id and timestamps are deliberately NOT carried. A recipe arriving here
+ * is new to this shelf, and keeping a sender's id would collide with their
+ * copy the moment both were synced.
+ */
+export function newRecipe({
+  bookId, title = 'Untitled recipe', id, createdAt, updatedAt, ...rest
+} = {}) {
   const now = new Date().toISOString();
   return {
     id: uid(),
@@ -224,6 +239,7 @@ export function newRecipe({ bookId, title = 'Untitled recipe' } = {}) {
     notes: '',
     tags: [],
     elements: [],
+    ...rest,
     createdAt: now,
     updatedAt: now,
   };

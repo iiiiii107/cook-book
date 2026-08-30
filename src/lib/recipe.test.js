@@ -6,6 +6,7 @@ import {
   scaleIngredients,
   sortRecipes,
   totalTime,
+  newRecipe,
 } from './recipe.js';
 
 describe('parseIngredient', () => {
@@ -143,5 +144,48 @@ describe('totalTime', () => {
   it('adds prep and cook, and copes with a recipe that has neither', () => {
     expect(totalTime({ time: { prep: 10, cook: 25 } })).toBe(35);
     expect(totalTime({})).toBe(0);
+  });
+});
+
+describe('newRecipe', () => {
+  /* Every import ends at store.addRecipe(parsed). When this dropped everything
+     but the title, every import path saved an empty recipe — and the review
+     screen showed the real one first, so it looked like it had worked. */
+  it('carries through everything it is given', () => {
+    const parsed = {
+      bookId: 'b1',
+      title: 'Carbonara',
+      servings: 6,
+      time: { prep: 10, cook: 15 },
+      sourceUrl: 'https://example.com',
+      sourceLabel: 'Nonna',
+      ingredients: [parseIngredient('400 g spaghetti')],
+      steps: [{ id: 's1', text: 'Boil the water.' }],
+      notes: 'Off the heat.',
+    };
+    const recipe = newRecipe(parsed);
+
+    expect(recipe.title).toBe('Carbonara');
+    expect(recipe.servings).toBe(6);
+    expect(recipe.time).toEqual({ prep: 10, cook: 15 });
+    expect(recipe.sourceUrl).toBe('https://example.com');
+    expect(recipe.sourceLabel).toBe('Nonna');
+    expect(recipe.ingredients).toHaveLength(1);
+    expect(recipe.steps).toHaveLength(1);
+    expect(recipe.notes).toBe('Off the heat.');
+  });
+
+  it('still fills in sensible defaults when given almost nothing', () => {
+    const recipe = newRecipe({ bookId: 'b1' });
+    expect(recipe).toMatchObject({ title: 'Untitled recipe', servings: 4, notes: '' });
+    expect(recipe.ingredients).toEqual([]);
+    expect(recipe.steps).toEqual([]);
+  });
+
+  it('gives an imported recipe its own id and dates', () => {
+    // Keeping the sender's id would collide with their copy once both synced.
+    const recipe = newRecipe({ bookId: 'b1', id: 'theirs', createdAt: '2020-01-01T00:00:00.000Z' });
+    expect(recipe.id).not.toBe('theirs');
+    expect(recipe.createdAt).not.toBe('2020-01-01T00:00:00.000Z');
   });
 });
