@@ -97,8 +97,11 @@ export function renderRecipe(host, recipeId, query) {
 
 function header(recipe, book, editing, decorating) {
   const actions = el('div', { class: 'scene-actions' });
+  // Just navigate. The hold on the background re-render lifts by itself when
+  // this view is torn down — whoever claimed it is watching its own node, and
+  // reaching for that variable from here was a scope error that threw and
+  // stopped the navigation ever happening.
   const leave = () => {
-    releaseDecoFlag?.();
     location.hash = `#/recipe/${recipe.id}`;
   };
 
