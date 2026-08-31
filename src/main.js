@@ -55,15 +55,18 @@ function lightSwitch() {
         window.matchMedia('(prefers-color-scheme: dark)').matches);
     const lit = settings.light !== 'off' && settings.light !== 'bulb';
 
+    // Always the cord, in both themes. The lamp sat in the bottom-right
+    // corner, which on a phone is exactly where the buttons are — you could
+    // not reach Cook without pulling it.
     clear(host);
-    host.className = `light-switch ${night ? 'lamp' : 'cord'}`;
+    host.className = 'light-switch cord';
     host.setAttribute(
       'aria-label',
       night
         ? settings.light === 'bulb' ? 'Turn the lamp off' : 'Turn the lamp on'
         : lit ? 'Close the shutters' : 'Open the shutters',
     );
-    host.append(night ? lampSvg(settings.light === 'bulb') : cordSvg(lit));
+    host.append(cordSvg(night ? settings.light !== 'bulb' : lit));
   }
 
   host.addEventListener('click', async () => {
@@ -97,34 +100,6 @@ function cordSvg(open) {
       }),
       svg('circle', { cx: '14.5', cy: length + 7, r: '2.4', fill: 'rgba(255,255,255,.35)' }),
     ],
-  );
-}
-
-function lampSvg(on) {
-  const glow = on ? 'var(--lemon)' : 'var(--paper-edge)';
-  return svg(
-    'svg',
-    { viewBox: '0 0 92 108', preserveAspectRatio: 'xMidYMax meet', 'aria-hidden': 'true' },
-    [
-      on &&
-        svg('ellipse', {
-          cx: '46', cy: '52', rx: '44', ry: '40',
-          fill: 'var(--lemon)', opacity: '.22',
-        }),
-      // shade
-      svg('path', {
-        d: 'M22 46 L34 16 L58 16 L70 46 Z',
-        fill: glow, stroke: 'var(--ink-deep)', 'stroke-width': '2.4',
-        'stroke-linejoin': 'round',
-      }),
-      // stem and base
-      svg('path', {
-        d: 'M46 46 L46 92 M26 96 L66 96',
-        stroke: 'var(--ink-deep)', 'stroke-width': '3',
-        'stroke-linecap': 'round', fill: 'none',
-      }),
-      svg('ellipse', { cx: '46', cy: '99', rx: '22', ry: '6', fill: 'var(--ink-deep)' }),
-    ].filter(Boolean),
   );
 }
 

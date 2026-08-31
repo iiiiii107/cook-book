@@ -313,8 +313,13 @@ function coverPage(book) {
   ]);
 }
 
+/* The index is not a fixed page: with more recipes than fit on a leaf it runs
+   onto the next one, the way a contents page does. The cover stays exactly one
+   page, and recipes still start fresh after it — so with a short index the
+   first recipe is on page three as before, and with a long one it simply
+   arrives later. */
 function indexPage(book, recipes) {
-  const page = el('div', { class: 'fixed-page page-index' });
+  const page = el('div', { class: 'page-index' });
 
   page.append(
     el('div', { class: 'index-head' }, [

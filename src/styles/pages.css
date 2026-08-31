@@ -42,6 +42,9 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 18px;
+  /* The heading and its sort control never split across a page break. */
+  break-inside: avoid-column;
+  break-after: avoid-column;
 }
 
 .page-heading {
@@ -54,10 +57,9 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
-  flex: 1;
   counter-reset: recipe;
 }
+.index-list li { break-inside: avoid-column; }
 .index-list li { counter-increment: recipe; }
 
 .index-row {
@@ -473,6 +475,13 @@ body[data-editing='1'] .recipe-steps li:empty::after {
   break-inside: avoid-column;
   display: flex;
   flex-direction: column;
+}
+
+/* The contents page. Allowed to run over onto another leaf when there are more
+   recipes than fit, and always followed by a fresh page for the first recipe. */
+.page-index {
+  break-after: column;
+  break-inside: auto;
 }
 
 .recipe-block {

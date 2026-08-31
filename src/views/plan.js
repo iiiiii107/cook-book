@@ -73,23 +73,30 @@ export function renderPlan(host, query) {
   const sheet = el('div', { class: 'sheet' });
   const grid = el('div', { class: 'plan-grid' });
 
-  // Corner, then a column head per day.
+  /* Each cell carries its own day and meal as custom properties, and the
+     stylesheet works out where to put it from those. That is what lets the
+     whole grid transpose on a narrow screen — days down the side rather than
+     across the top — without building the DOM twice. */
   grid.append(el('div', { class: 'plan-corner' }));
-  for (const date of dates) {
+
+  dates.forEach((date, day) => {
     grid.append(
       el('div', {
         class: `plan-day${date === todayISO() ? ' is-today' : ''}`,
+        style: `--day:${day}`,
       }, [
         el('span', { class: 'plan-dow', text: DAY_FULL[dayOfWeek(date)].slice(0, 3) }),
         el('span', { class: 'plan-date', text: formatShort(date) }),
       ]),
     );
-  }
+  });
 
-  for (const meal of MEALS) {
-    grid.append(el('div', { class: 'plan-meal', text: meal.label }));
-    for (const date of dates) grid.append(slot(date, meal.id));
-  }
+  MEALS.forEach((meal, mealIndex) => {
+    grid.append(el('div', { class: 'plan-meal', style: `--meal:${mealIndex}`, text: meal.label }));
+    dates.forEach((date, day) => {
+      grid.append(slot(date, meal.id, day, mealIndex));
+    });
+  });
 
   sheet.append(grid);
   host.append(sheet);
@@ -98,10 +105,11 @@ export function renderPlan(host, query) {
 
 /* --- a slot ---------------------------------------------------------------- */
 
-function slot(date, meal) {
+function slot(date, meal, day, mealIndex) {
   const cell = el('div', {
     class: 'plan-slot',
     dataset: { date, meal },
+    style: `--day:${day}; --meal:${mealIndex}`,
   });
 
   for (const entry of store.plannedFor(date, meal)) {

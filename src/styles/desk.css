@@ -160,23 +160,18 @@
 .light-switch svg { display: block; width: 100%; height: 100%; }
 .light-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; opacity: 1; }
 
+/* Hangs at the left, beside the title, where nothing else wants to be. It was
+   on the right, and the lamp it used to become at night sat in the corner the
+   buttons live in — on a phone you could not reach Cook without pulling it. */
 .cord {
   top: 0;
-  right: 26px;
+  left: 6px;
   width: 14px;
-  height: 76px;
+  height: 72px;
   transform-origin: 50% 0;
 }
 .cord:hover  { transform: rotate(4deg); }
 .cord:active { transform: rotate(9deg) translateY(6px); }
-
-.lamp {
-  bottom: 16px;
-  right: 20px;
-  width: 34px;
-  height: 40px;
-}
-.lamp:hover { transform: translateY(-2px); }
 
 /* --- layout shell -------------------------------------------------------- */
 
@@ -201,10 +196,9 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding-right: 44px;    /* clear of the cord in the corner */
+  padding-left: 26px;     /* clear of the cord hanging at the left */
   flex: none;
 }
-body[data-view='settings'] .scene-head { padding-right: 0; }
 
 .wordmark {
   font-family: var(--font-display);
