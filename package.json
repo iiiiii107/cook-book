@@ -13,6 +13,7 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "firebase-tools": "^15.28.2",
     "jsdom": "^29.1.1",
     "vite": "^8.2.2",

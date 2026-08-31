@@ -40,7 +40,7 @@ framework, a hash router, one store, and plain CSS with custom properties.
 | `src/views/cook.js` | Cook mode |
 | `src/views/plan.js` | The planning sheet and the shopping list |
 | `src/views/` | One module per screen |
-| `scripts/generate-icons.mjs` | Draws and encodes the PWA icons from scratch |
+| `public/favicon.svg` | The mark; every icon is rendered from this one file |
 
 ### Pages flow because CSS does it
 
