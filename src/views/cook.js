@@ -70,8 +70,8 @@ export function renderCook(host, recipeId) {
       iconButton('brush', 'Draw on the page', {
         onClick: () => {
           drawing = !drawing;
-          deco.layer.classList.toggle('is-active', drawing);
           deco.setTool(drawing ? 'pencil' : 'move');
+          deco.setActive(drawing);
           toast(drawing ? 'Draw on the page.' : 'Back to cooking.');
         },
       }),
@@ -124,10 +124,12 @@ export function renderCook(host, recipeId) {
     active: false,
     toolStyles: store.state.settings.toolStyles,
     read: () => structuredClone(store.recipeById(recipe.id)?.elements || []),
+    // Marks made while cooking are recorded as such — the splatters of a
+    // Tuesday night are worth being able to tell apart later. It is set where
+    // the element is built: newElement already defaults origin to 'edit', so
+    // stamping it afterwards here never found anything left to stamp.
+    origin: 'cook',
     write: (elements) => {
-      // Marks made while cooking are recorded as such — the splatters of a
-      // Tuesday night are worth being able to tell apart later.
-      for (const element of elements) if (!element.origin) element.origin = 'cook';
       store.updateRecipe(recipe.id, { elements });
       deco.refresh();
     },

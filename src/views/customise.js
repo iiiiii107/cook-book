@@ -35,8 +35,16 @@ const TOOLS = [
  * @param {boolean} options.active whether input is accepted
  * @param {object} options.toolStyles settings.toolStyles
  */
-export function mountDecorations({ host, paged, read, write, active, toolStyles }) {
-  const layer = el('div', { class: `deco-layer${active ? ' is-active' : ''}` });
+export function mountDecorations({ host, paged, read, write, active, toolStyles, origin = 'edit' }) {
+  // Whether the layer takes input can change after mounting — cook mode starts
+  // with it off and turns it on when you pick up the pen — so it is state, not
+  // a value read once. The tool is written onto the layer here too, so the CSS
+  // that decides what is clickable is correct before anyone calls setTool.
+  let interactive = Boolean(active);
+  const layer = el('div', {
+    class: `deco-layer${interactive ? ' is-active' : ''}`,
+    dataset: { tool: 'move' },
+  });
   host.append(layer);
 
   let tool = 'move';
@@ -62,7 +70,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
       });
       layer.append(box);
       paint(box, rect);
-      if (active) wireDrawing(box, rect);
+      if (interactive) wireDrawing(box, rect);
     }
   }
 
@@ -118,7 +126,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
       node.append(stickerSvg(item.sticker));
     } else if (item.kind === 'text') {
       const body = el('div', { class: 'deco-text', text: item.text || '' });
-      if (active) {
+      if (interactive) {
         // Double-click to write, so a single click can still drag the note
         // around without the caret appearing every time you nudge it.
         body.addEventListener('dblclick', () => {
@@ -153,7 +161,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
       node.append(img);
     }
 
-    if (active) {
+    if (interactive) {
       node.append(
         el('button', {
           class: 'deco-handle deco-resize', type: 'button',
@@ -368,6 +376,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
         elements.push(
           newElement({
             kind: 'doodle',
+            origin,
             page: rect.page,
             d: pathFromPoints(kept),
             color: style.ink || '#6B6660',
@@ -412,7 +421,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
 
   function add(fields) {
     const elements = read();
-    elements.push(newElement({ page: currentPage(), ...fields }));
+    elements.push(newElement({ origin, page: currentPage(), ...fields }));
     write(elements);
   }
 
@@ -440,6 +449,14 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles 
     setTool(next) {
       tool = next;
       layer.dataset.tool = next;
+      pageBoxes();
+    },
+    /* Turning input on has to rebuild the pages: the drag, draw and note
+       handlers are attached while a page box is built, so flipping a class
+       alone leaves a layer that looks ready and ignores every stroke. */
+    setActive(next) {
+      interactive = Boolean(next);
+      layer.classList.toggle('is-active', interactive);
       pageBoxes();
     },
     add,
