@@ -16,6 +16,29 @@ import { cropPhoto } from '../lib/crop.js';
    Everything inside is placed as a fraction of the page box, so a sticker
    lands in the same spot on a monitor and on an iPad. */
 
+/* The pen pot.
+
+   Two sets, because a highlighter and a pencil want opposite things: a
+   highlighter is laid down at 0.4 opacity over words that still have to be
+   readable, so it needs pale and bright, while dark ink at that opacity just
+   looks like a smudge. Everything here is a literal hex rather than a token,
+   because the colour is written into the saved mark — a stroke has to keep the
+   colour it was drawn in even after the palette is changed in settings. */
+const INK_WELLS = {
+  highlighter: [
+    ['Lemon', '#E8C84E'], ['Apricot', '#E9A868'], ['Rose', '#E4919E'],
+    ['Mint', '#8ECBAF'], ['Sky', '#8FB8DA'], ['Lilac', '#B3A3D0'],
+  ],
+  default: [
+    ['Graphite', '#6B6660'], ['Ink', '#2B2825'], ['Slate', '#46607A'],
+    ['Sea', '#47726A'], ['Olive', '#5F6B4A'], ['Ochre', '#8A7B52'],
+    ['Plum', '#6B5566'], ['Brick', '#8B4A52'],
+  ],
+};
+
+/** The tools that take a colour of their own. Move and the eraser do not. */
+const INKED = new Set(['pencil', 'crayon', 'highlighter']);
+
 const TOOLS = [
   { id: 'move', label: 'Move things', icon: 'hand' },
   { id: 'pencil', label: 'Pencil', icon: 'pencil' },
@@ -36,6 +59,9 @@ const TOOLS = [
  * @param {object} options.toolStyles settings.toolStyles
  */
 export function mountDecorations({ host, paged, read, write, active, toolStyles, origin = 'edit' }) {
+  // Reassignable, because the tray hands down a new set when you pick a
+  // colour and the next stroke has to be drawn in it.
+  let styles = toolStyles;
   // Whether the layer takes input can change after mounting — cook mode starts
   // with it off and turns it on when you pick up the pen — so it is state, not
   // a value read once. The tool is written onto the layer here too, so the CSS
@@ -309,7 +335,7 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles,
         return;
       }
 
-      const style = toolStyles[tool] || {};
+      const style = styles[tool] || {};
       const limits = TOOL_LIMITS[tool] || { min: 1, max: 16 };
       const width = Math.min(Math.max(style.width ?? 3, limits.min), limits.max);
       const points = [];
@@ -451,6 +477,9 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles,
       layer.dataset.tool = next;
       pageBoxes();
     },
+    setToolStyles(next) {
+      styles = next;
+    },
     /* Turning input on has to rebuild the pages: the drag, draw and note
        handlers are attached while a page box is built, so flipping a class
        alone leaves a layer that looks ready and ignores every stroke. */
@@ -468,8 +497,9 @@ export function mountDecorations({ host, paged, read, write, active, toolStyles,
 export { TOOLS };
 
 /** The tray of tools and stickers shown while customising. */
-export function decorationTray({ deco, onTool }) {
+export function decorationTray({ deco, onTool, toolStyles = {}, onStyle }) {
   const tray = el('div', { class: 'deco-tray' });
+  let styles = toolStyles;
 
   const toolRow = el('div', { class: 'tray-row' });
   const buttons = TOOLS.map((t) =>
@@ -482,12 +512,58 @@ export function decorationTray({ deco, onTool }) {
       onClick: () => {
         deco.setTool(t.id);
         buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t.id)));
+        paintInks();
         onTool?.(t.id);
       },
       dataset: { tool: t.id },
     }, [toolIcon(t.icon)]),
   );
   toolRow.append(...buttons);
+
+  /* The colours for whichever tool is in hand. The row swaps rather than
+     showing every colour at once: the pot you are offered should be the one
+     that suits the thing you are holding. */
+  const inkRow = el('div', { class: 'tray-row tray-inks' });
+  const custom = el('input', {
+    type: 'color',
+    class: 'tray-ink tray-ink-custom',
+    title: 'Any other colour',
+    'aria-label': 'Any other colour',
+    onInput: (event) => setInk(event.target.value),
+  });
+
+  function setInk(ink) {
+    styles = { ...styles, [deco.tool]: { ...styles[deco.tool], ink } };
+    // The layer needs it for the next stroke; the caller stores it, so the
+    // colour you were last drawing in is the one still in your hand tomorrow.
+    deco.setToolStyles(styles);
+    onStyle?.(styles);
+    paintInks();
+  }
+
+  function paintInks() {
+    inkRow.hidden = !INKED.has(deco.tool);
+    if (inkRow.hidden) return;
+
+    const current = String(styles[deco.tool]?.ink || '').toLowerCase();
+    const wells = INK_WELLS[deco.tool] || INK_WELLS.default;
+    inkRow.replaceChildren(
+      ...wells.map(([label, ink]) =>
+        el('button', {
+          class: 'tray-ink',
+          type: 'button',
+          title: label,
+          'aria-label': label,
+          'aria-pressed': String(ink.toLowerCase() === current),
+          style: `--well: ${ink}`,
+          onClick: () => setInk(ink),
+        }),
+      ),
+      custom,
+    );
+    if (/^#[0-9a-f]{6}$/.test(current)) custom.value = current;
+  }
+  paintInks();
 
   const stickerRow = el('div', { class: 'tray-row tray-stickers' },
     deco.stickerIds.map((id) =>
@@ -524,7 +600,7 @@ export function decorationTray({ deco, onTool }) {
     photoInput,
   ]);
 
-  tray.append(toolRow, stickerRow, extras);
+  tray.append(toolRow, inkRow, stickerRow, extras);
   return tray;
 }
 

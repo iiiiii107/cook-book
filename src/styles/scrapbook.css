@@ -133,11 +133,23 @@
   border: 1px solid var(--hair);
   box-shadow: 0 10px 26px -20px var(--shadow-2);
   backdrop-filter: blur(4px);
-  flex: none;
+  /* It may shrink to the screen but not stretch past it — without the cap it
+     sits at its content width and simply hangs off the side of a phone, which
+     put the tools out of reach entirely once the pen pot was added. Capped, the
+     wrap above has something to wrap against. */
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 .tray-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .tray-row + .tray-row { border-left: 1px solid var(--hair); padding-left: 14px; }
+
+/* Stacked, the dividers would be stubs hanging off the left of each row —
+   they separate rows sitting side by side, and there are none. */
+@media (max-width: 780px) {
+  .tray-row + .tray-row { border-left: none; padding-left: 0; }
+  .deco-tray { gap: 4px 10px; }
+}
 
 .tray-tool {
   width: 32px;
@@ -158,6 +170,41 @@
   color: var(--btn-text);
   border-color: transparent;
 }
+
+/* The pen pot. Round, because a swatch that is the colour it applies needs no
+   label — and the row is hidden outright for tools that take no colour, rather
+   than shown greyed, so the tray does not grow a dead section. */
+.tray-inks[hidden] { display: none; }
+
+.tray-ink {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--hair-strong);
+  background: var(--well);
+  cursor: pointer;
+}
+.tray-ink:hover { transform: scale(1.12); }
+/* A ring set off the swatch by a gap of paper, so it reads as chosen against
+   both a pale colour and a dark one. */
+.tray-ink[aria-pressed='true'] {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--accent);
+}
+
+/* The native colour input, cut down to the same disc as the swatches. Dashed,
+   so it reads as the way out of the pot rather than another colour in it. */
+.tray-ink-custom {
+  border-style: dashed;
+  overflow: hidden;
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+}
+.tray-ink-custom::-webkit-color-swatch-wrapper { padding: 1px; }
+.tray-ink-custom::-webkit-color-swatch { border: none; border-radius: 50%; }
+.tray-ink-custom::-moz-color-swatch { border: none; border-radius: 50%; }
 
 .tray-sticker {
   width: 30px;

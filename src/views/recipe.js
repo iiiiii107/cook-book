@@ -71,7 +71,11 @@ export function renderRecipe(host, recipeId, query) {
 
   if (decorating) {
     releaseDecoFlag = claimBodyFlag('editing', paged.viewport);
-    trayHost.append(decorationTray({ deco }));
+    trayHost.append(decorationTray({
+      deco,
+      toolStyles: store.state.settings.toolStyles,
+      onStyle: (toolStyles) => store.updateSettings({ toolStyles }),
+    }));
     deco.setTool('move');
   }
 

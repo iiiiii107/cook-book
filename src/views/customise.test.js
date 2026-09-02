@@ -10,7 +10,7 @@
    the two situations apart. */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { mountDecorations } from './customise.js';
+import { mountDecorations, decorationTray } from './customise.js';
 
 beforeAll(() => {
   Element.prototype.setPointerCapture = () => {};
@@ -49,6 +49,77 @@ function drawOn(host) {
   for (let i = 1; i <= 8; i += 1) send('pointermove', 20 + i * 20, 20 + i * 15);
   send('pointerup', 180, 140);
 }
+
+/** The tray, wired to the same layer, with a note of what it asked to save. */
+function trayOn(deco, toolStyles) {
+  let saved = null;
+  const tray = decorationTray({
+    deco,
+    toolStyles,
+    onStyle: (next) => { saved = next; },
+  });
+  const pick = (title) => tray.querySelector(`.tray-ink[title="${title}"]`).click();
+  const wells = () => [...tray.querySelectorAll('.tray-ink')].map((b) => b.title);
+  const tool = (id) => tray.querySelector(`.tray-tool[data-tool="${id}"]`).click();
+  return { tray, pick, wells, tool, saved: () => saved, row: () => tray.querySelector('.tray-inks') };
+}
+
+describe('the pen pot', () => {
+  it('draws the next stroke in the colour just picked, and remembers it', () => {
+    const { deco, host, drawn } = layerOn({ active: true });
+    const tray = trayOn(deco, { pencil: { ink: '#6B6660', width: 2 } });
+
+    tray.tool('pencil');
+    tray.pick('Brick');
+    drawOn(host);
+
+    expect(drawn()[0].color).toBe('#8B4A52');
+    // Handed back to be stored, so the pen is still this colour tomorrow.
+    expect(tray.saved().pencil.ink).toBe('#8B4A52');
+    // And the pot shows which one is in hand.
+    expect(tray.row().querySelector('[aria-pressed="true"]').title).toBe('Brick');
+  });
+
+  it('keeps a colour per tool, so highlighting does not recolour the pencil', () => {
+    const { deco, host, drawn } = layerOn({ active: true });
+    const tray = trayOn(deco, {
+      pencil: { ink: '#6B6660', width: 2 },
+      highlighter: { ink: '#E8C84E', width: 15 },
+    });
+
+    tray.tool('pencil');
+    tray.pick('Sea');
+    tray.tool('highlighter');
+    tray.pick('Rose');
+    drawOn(host);
+
+    expect(drawn()[0].color).toBe('#E4919E');
+    expect(tray.saved().pencil.ink).toBe('#47726A');
+
+    tray.tool('pencil');
+    drawOn(host);
+    expect(drawn()[1].color).toBe('#47726A');
+  });
+
+  it('offers pale colours to the highlighter and none at all to the eraser', () => {
+    const { deco } = layerOn({ active: true });
+    const tray = trayOn(deco, {});
+
+    tray.tool('pencil');
+    expect(tray.wells()).toContain('Graphite');
+    expect(tray.row().hidden).toBe(false);
+
+    // A highlighter lays down at 0.4 opacity, so it wants its own pot.
+    tray.tool('highlighter');
+    expect(tray.wells()).toContain('Lemon');
+    expect(tray.wells()).not.toContain('Graphite');
+
+    for (const id of ['eraser', 'move']) {
+      tray.tool(id);
+      expect(tray.row().hidden).toBe(true);
+    }
+  });
+});
 
 describe('the decoration layer', () => {
   it('draws once the pen is picked up, on a layer that mounted switched off', () => {
