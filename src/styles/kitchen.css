@@ -209,6 +209,38 @@
 }
 .check-line input { accent-color: var(--accent); }
 
+/* --- sharing a week --------------------------------------------------------- */
+
+/* A field with something to press at the end of it. */
+.share-link { display: flex; gap: 6px; align-items: center; }
+.share-link input { flex: 1 1 auto; min-width: 0; }
+.share-link button { flex: none; }
+
+.share-members { list-style: none; margin: 0; padding: 0; }
+.share-members li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.share-members li:last-child { border-bottom: none; }
+.share-members small { color: var(--muted); }
+
+/* A press that is a sentence rather than a button — for the destructive one
+   in a list, where a real button every row would shout. */
+.btn-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: calc(12px * var(--text-scale));
+  text-decoration: underline;
+  cursor: pointer;
+}
+.btn-link:hover { color: var(--accent); }
+
 /* --- picking something for a slot ------------------------------------------- */
 
 .pick-list {

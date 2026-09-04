@@ -24,6 +24,9 @@ export const DEFAULT_SETTINGS = {
   // wanting to work out what a dangling string does.
   lighting: true,
   lightSwitch: false,
+  // The shared week being followed, if any. Kept in settings so it is picked
+  // up again on every device you are signed in on.
+  weekShareId: null,
   wood: 'oak',
   palette: {},           // colour overrides, written onto <html> at boot
   fontDisplay: 'garamond',

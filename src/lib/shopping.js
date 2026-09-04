@@ -34,7 +34,13 @@ export function entriesBetween(plan = {}, dates = []) {
 function resolve(entry, recipesById, standbysById) {
   if (entry.recipeId) {
     const recipe = recipesById.get(entry.recipeId);
-    return recipe && { name: recipe.title, ingredients: recipe.ingredients || [], servings: recipe.servings };
+    if (recipe) {
+      return { name: recipe.title, ingredients: recipe.ingredients || [], servings: recipe.servings };
+    }
+    /* Somebody else's recipe on a shared week. We know what it is called and
+       nothing about what goes in it, so it belongs at the foot of the list —
+       a reminder that Tuesday is spoken for, not a blank. */
+    return entry.title ? { name: entry.title, ingredients: [] } : null;
   }
   if (entry.standbyId) {
     const standby = standbysById.get(entry.standbyId);

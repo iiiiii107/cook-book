@@ -1,5 +1,5 @@
 import './styles/app.css';
-import { el, svg, clear } from './lib/dom.js';
+import { el, svg, clear, toast } from './lib/dom.js';
 import { store } from './lib/store.js';
 import { applyTheme, toggleLight } from './lib/theme.js';
 import { registerServiceWorker } from './lib/pwa.js';
@@ -8,6 +8,7 @@ import { restoreSession, onAccountChange, currentAccount } from './lib/sync.js';
 import { renderDesk } from './views/desk.js';
 import { renderBook } from './views/book.js';
 import { renderRecipe } from './views/recipe.js';
+import { renderJoin, offerInvites } from './views/share-week.js';
 import { renderSettings } from './views/settings.js';
 import { renderPlan } from './views/plan.js';
 import { renderImport } from './views/import.js';
@@ -25,6 +26,7 @@ const ROUTES = [
   { pattern: /^\/plan$/, view: 'plan', render: renderPlan },
   { pattern: /^\/import$/, view: 'import', render: renderImport },
   { pattern: /^\/settings$/, view: 'settings', render: renderSettings },
+  { pattern: /^\/join\/([^/]+)$/, view: 'join', render: renderJoin },
 ];
 
 const app = document.querySelector('#app');
@@ -122,6 +124,10 @@ function go() {
     { r: ROUTES[0], m: [] };
 
   document.body.dataset.view = route.r.view;
+  // A dialog belongs to the screen that opened it. Leaving one behind over a
+  // different screen is confusing on its own, and the sharing panel makes it
+  // easy to hit — half of it navigates somewhere.
+  document.querySelectorAll('.modal-backdrop').forEach((m) => m.remove());
   clear(scene);
   route.r.render(scene, ...route.m.slice(1), query);
   scene.scrollTop = 0;
@@ -164,6 +170,8 @@ async function boot() {
       });
     }
     maybeGo();
+    // Somebody may have left an invitation while this device was signed out.
+    if (account) offerInvites();
   });
 
   window.addEventListener('hashchange', go);
@@ -174,6 +182,16 @@ async function boot() {
   // with it, and cook mode, because a rebuild would lose which step you are
   // on and drop you back at the top of the method mid-recipe.
   store.addEventListener('change', maybeGo);
+
+  /* A shared week can end while you are looking at it — the owner stops it, or
+     takes you off. Say so, because the sheet silently becoming your own again
+     would look like the week had been wiped. */
+  store.addEventListener('share-ended', (event) => {
+    toast(event.detail?.why === 'removed'
+      ? 'You are no longer on that shared week. Your own is back.'
+      : 'That shared week was stopped. Your own is back.');
+    maybeGo();
+  });
 
   go();
 

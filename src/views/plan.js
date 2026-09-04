@@ -5,6 +5,7 @@ import { MEALS, buildList, toMarkdown, listFilename } from '../lib/shopping.js';
 import { weekStarts } from '../lib/plan.js';
 import { formatAmount } from '../lib/units.js';
 import { sortRecipes, parseIngredient, formatIngredient } from '../lib/recipe.js';
+import { shareButton } from './share-week.js';
 
 /* The planning sheet.
 
@@ -55,6 +56,7 @@ export function renderPlan(host, query) {
     }));
   }
 
+  actions.append(shareButton());
   actions.append(iconButton('cart', 'Make a shopping list', {
     primary: true,
     onClick: () => shoppingList(dates),
@@ -65,7 +67,13 @@ export function renderPlan(host, query) {
       el('h1', { class: 'wordmark' }, [
         label,
         el('small', {
-          text: `${formatShort(dates[0])} – ${formatShort(dates[6])} · ${chefName(store.state.settings.profile)}`,
+          // Who the sheet belongs to. On a shared week that is not one person,
+          // and it matters: anything written here is written for everybody.
+          text: store.sharingWeek
+            ? `${formatShort(dates[0])} – ${formatShort(dates[6])} · shared with `
+              + `${Math.max(0, (store.shared.memberIds || []).length - 1)} other`
+              + `${(store.shared.memberIds || []).length === 2 ? '' : 's'}`
+            : `${formatShort(dates[0])} – ${formatShort(dates[6])} · ${chefName(store.state.settings.profile)}`,
         }),
       ]),
       actions,
@@ -152,7 +160,9 @@ function slot(date, meal, day, mealIndex) {
 function planned(entry, date, meal) {
   const recipe = entry.recipeId && store.recipeById(entry.recipeId);
   const standby = entry.standbyId && store.standbyById(entry.standbyId);
-  const label = recipe ? recipe.title : standby ? standby.name : entry.text || 'Something';
+  const label = recipe ? recipe.title
+    : standby ? standby.name
+    : entry.text || entry.title || 'Something';
 
   const node = el('div', {
     class: `plan-entry${recipe ? '' : ' is-note'}`,
@@ -188,7 +198,7 @@ function planned(entry, date, meal) {
 
 function addToSlot(date, meal) {
   const recipes = store.state.recipes;
-  const standbys = store.state.standbys || [];
+  const standbys = store.week.standbys || [];
   const note = el('input', { type: 'text', placeholder: 'Jam sandwich, or eating out' });
   const keep = el('input', { type: 'checkbox' });
   const onList = el('input', { type: 'checkbox', checked: true });
@@ -365,7 +375,7 @@ function quickMealDialog(existing) {
 
 function recipeDrawer() {
   const recipes = store.state.recipes;
-  const standbys = store.state.standbys || [];
+  const standbys = store.week.standbys || [];
 
   /* Both rails hold the same kind of thing — something to drop on a day — so
      they drag identically. Only the payload differs. */
@@ -421,9 +431,9 @@ function recipeDrawer() {
    cupboard can be taken into account before anything is downloaded. */
 function shoppingList(dates) {
   const { groups, extras } = buildList({
-    plan: store.state.plan,
+    plan: store.week.plan,
     recipes: store.state.recipes,
-    standbys: store.state.standbys,
+    standbys: store.week.standbys,
     dates,
   });
 

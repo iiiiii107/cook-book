@@ -78,6 +78,12 @@ async function firebase() {
   return sdk;
 }
 
+/* The SDK, for the sharing module. Loaded on demand like everything else, and
+   null until there is a project to talk to. */
+export async function firebaseSdk() {
+  return config ? firebase() : null;
+}
+
 /* ---------- the account ---------- */
 
 const account = new EventTarget();

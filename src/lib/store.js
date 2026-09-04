@@ -2,6 +2,7 @@ import { storage } from './storage.js';
 import { newBook, newRecipe } from './recipe.js';
 import { uid } from './dom.js';
 import { prunePlan, planWindow } from './plan.js';
+import { createShare, joinShare, leaveShare, watchShare, saveShare } from './share.js';
 
 const MEAL_IDS = ['breakfast', 'lunch', 'dinner'];
 
@@ -15,6 +16,9 @@ class Store extends EventTarget {
     super();
     this.state = null;
     this.ready = false;
+    // The shared week being followed, if any. Null means your own.
+    this.shared = null;
+    this.stopWeekShare = null;
   }
 
   async init() {
@@ -23,6 +27,11 @@ class Store extends EventTarget {
     // you ever made would grow without limit and sync all of it.
     if (prunePlan(this.state.plan)) await storage.save(this.state);
     this.ready = true;
+    // A shared week is picked up again on every load, so it is not something
+    // you have to rejoin each morning.
+    if (this.state.settings.weekShareId) {
+      this.attachWeekShare(this.state.settings.weekShareId);
+    }
     storage.subscribe((incoming) => {
       this.state = incoming;
       this.emit();
@@ -32,6 +41,98 @@ class Store extends EventTarget {
 
   emit() {
     this.dispatchEvent(new CustomEvent('change'));
+  }
+
+  /* ---- which week is on the desk ------------------------------------------
+
+     Your own, or one you are sharing. Both carry a `plan` and the quick meals
+     the plan refers to, so everything below works on whichever is in view
+     without knowing which it is — and your own week sits untouched under your
+     own user id the whole time a share is on, waiting to come back. */
+
+  get week() {
+    return this.shared || this.state;
+  }
+
+  /** True while somebody else's Tuesday can appear on this sheet. */
+  get sharingWeek() {
+    return Boolean(this.shared);
+  }
+
+  async persistWeek() {
+    if (!this.shared) return this.persist();
+    await saveShare(this.shared.id, {
+      plan: this.shared.plan,
+      standbys: this.shared.standbys,
+    });
+    this.emit();
+  }
+
+  /** Follow a shared week, and keep following it across reloads. */
+  attachWeekShare(id) {
+    this.detachWeekShare();
+    this.stopWeekShare = watchShare(
+      id,
+      (share) => {
+        const payload = share.payload || {};
+        this.shared = {
+          id: share.id,
+          label: share.label,
+          ownerId: share.ownerId,
+          ownerName: share.ownerName,
+          members: share.members,
+          memberIds: share.memberIds,
+          plan: payload.plan || {},
+          standbys: payload.standbys || [],
+        };
+        // The three-week window applies to a shared sheet exactly as it does
+        // to your own; nobody wants last spring arriving from someone else.
+        if (prunePlan(this.shared.plan)) this.persistWeek();
+        this.emit();
+      },
+      (why) => {
+        this.detachWeekShare();
+        this.state.settings.weekShareId = null;
+        this.persist();
+        this.dispatchEvent(new CustomEvent('share-ended', { detail: { why } }));
+      },
+    );
+  }
+
+  detachWeekShare() {
+    this.stopWeekShare?.();
+    this.stopWeekShare = null;
+    this.shared = null;
+  }
+
+  /** Start sharing this week. What is already on it goes with you. */
+  async startWeekShare(label) {
+    const id = await createShare(
+      'week',
+      { plan: this.state.plan, standbys: this.state.standbys },
+      label,
+    );
+    this.state.settings.weekShareId = id;
+    await this.persist();
+    this.attachWeekShare(id);
+    return id;
+  }
+
+  async joinWeekShare(id) {
+    await joinShare(id);
+    this.state.settings.weekShareId = id;
+    await this.persist();
+    this.attachWeekShare(id);
+  }
+
+  /** Step out. Your own week is exactly where you left it. */
+  async leaveWeekShare() {
+    const id = this.shared?.id;
+    this.detachWeekShare();
+    this.state.settings.weekShareId = null;
+    await this.persist();
+    if (id) await leaveShare(id);
+    this.emit();
   }
 
   async persist() {
@@ -122,14 +223,14 @@ class Store extends EventTarget {
   plannedCount(dates) {
     let count = 0;
     for (const date of dates) {
-      for (const meal of MEAL_IDS) count += (this.state.plan?.[date]?.[meal] || []).length;
+      for (const meal of MEAL_IDS) count += (this.week.plan?.[date]?.[meal] || []).length;
     }
     return count;
   }
 
   /** What is planned for one meal on one day. */
   plannedFor(date, meal) {
-    return this.state.plan?.[date]?.[meal] || [];
+    return this.week.plan?.[date]?.[meal] || [];
   }
 
   /**
@@ -144,21 +245,22 @@ class Store extends EventTarget {
      ingredients you meant to add — reaches every day it is already on. */
 
   standbyById(id) {
-    return this.state.standbys?.find((s) => s.id === id);
+    return this.week.standbys?.find((s) => s.id === id);
   }
 
   addStandby({ name, ingredients = [], onList = true }) {
-    if (!this.state.standbys) this.state.standbys = [];
+    const week = this.week;
+    if (!week.standbys) week.standbys = [];
     const standby = { id: uid(), name: String(name).trim(), ingredients, onList };
-    this.state.standbys.push(standby);
-    return this.persist().then(() => standby);
+    week.standbys.push(standby);
+    return this.persistWeek().then(() => standby);
   }
 
   updateStandby(id, patch) {
     const standby = this.standbyById(id);
     if (!standby) return Promise.resolve();
     Object.assign(standby, patch);
-    return this.persist();
+    return this.persistWeek();
   }
 
   /* Removing one leaves the days it was planned on pointing at nothing, so
@@ -168,7 +270,7 @@ class Store extends EventTarget {
     const standby = this.standbyById(id);
     if (!standby) return Promise.resolve();
 
-    for (const day of Object.values(this.state.plan || {})) {
+    for (const day of Object.values(this.week.plan || {})) {
       for (const entries of Object.values(day)) {
         for (const entry of entries) {
           if (entry.standbyId !== id) continue;
@@ -182,40 +284,48 @@ class Store extends EventTarget {
       }
     }
 
-    this.state.standbys = this.state.standbys.filter((s) => s.id !== id);
-    return this.persist();
+    this.week.standbys = this.week.standbys.filter((s) => s.id !== id);
+    return this.persistWeek();
   }
 
   addToPlan(date, meal, entry) {
-    if (!this.state.plan) this.state.plan = {};
-    if (!this.state.plan[date]) this.state.plan[date] = {};
-    if (!this.state.plan[date][meal]) this.state.plan[date][meal] = [];
-    this.state.plan[date][meal].push({ id: uid(), ...entry });
-    return this.persist();
+    const plan = this.week.plan || (this.week.plan = {});
+    if (!plan[date]) plan[date] = {};
+    if (!plan[date][meal]) plan[date][meal] = [];
+    /* A recipe's name is copied onto the entry, not just its id.
+
+       On a shared week the other person has their own cookbooks and not
+       yours, so an id on its own would show them a blank where Tuesday's
+       dinner should be. The id still does the work when they do have it —
+       the name is only there to be read when it cannot. */
+    const recipe = entry.recipeId && this.recipeById(entry.recipeId);
+    const named = recipe ? { title: recipe.title, ...entry } : entry;
+    plan[date][meal].push({ id: uid(), ...named });
+    return this.persistWeek();
   }
 
   removeFromPlan(date, meal, id) {
-    const slot = this.state.plan?.[date]?.[meal];
-    if (!slot) return this.persist();
-    this.state.plan[date][meal] = slot.filter((e) => e.id !== id);
+    const plan = this.week.plan || {};
+    const slot = plan[date]?.[meal];
+    if (!slot) return this.persistWeek();
+    plan[date][meal] = slot.filter((e) => e.id !== id);
     // A day with nothing left in it is removed, so the plan does not grow a
     // tail of empty weeks that has to be synced forever.
-    if (MEAL_IDS.every((m) => !(this.state.plan[date][m] || []).length)) {
-      delete this.state.plan[date];
-    }
-    return this.persist();
+    if (MEAL_IDS.every((m) => !(plan[date][m] || []).length)) delete plan[date];
+    return this.persistWeek();
   }
 
   /** Move an entry to another slot — the drag between days. */
   moveInPlan(from, to, id) {
-    const slot = this.state.plan?.[from.date]?.[from.meal];
+    const plan = this.week.plan || {};
+    const slot = plan[from.date]?.[from.meal];
     const entry = slot?.find((e) => e.id === id);
-    if (!entry) return this.persist();
-    this.state.plan[from.date][from.meal] = slot.filter((e) => e.id !== id);
-    if (!this.state.plan[to.date]) this.state.plan[to.date] = {};
-    if (!this.state.plan[to.date][to.meal]) this.state.plan[to.date][to.meal] = [];
-    this.state.plan[to.date][to.meal].push(entry);
-    return this.persist();
+    if (!entry) return this.persistWeek();
+    plan[from.date][from.meal] = slot.filter((e) => e.id !== id);
+    if (!plan[to.date]) plan[to.date] = {};
+    if (!plan[to.date][to.meal]) plan[to.date][to.meal] = [];
+    plan[to.date][to.meal].push(entry);
+    return this.persistWeek();
   }
 
   // ---- cooking --------------------------------------------------------------

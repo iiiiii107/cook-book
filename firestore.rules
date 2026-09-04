@@ -1,6 +1,8 @@
 rules_version = '2';
 
-/* Everything is filed under the signed-in user and nobody else can reach it.
+/* Everything is filed under the signed-in user and nobody else can reach it,
+   with one deliberate exception: a share, which several people hold together.
+
    Recipes are their own documents rather than fields in one blob — a single
    document is capped at 1 MB and a cookbook grows without limit. */
 
@@ -12,6 +14,65 @@ service cloud.firestore {
     // 10-minutes-to-spare owns app/state, calendartospare owns app/calendar.
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    /* A shared week, or later a shared cookbook.
+
+       The document id is the capability: it is unguessable, and knowing it is
+       what lets you join. That is the whole security model, and it is the
+       honest one — an invite sent by email delivers the same id, so a
+       forwarded invite works exactly as well as the original. Right for a
+       meal plan between people who live together; worth knowing before
+       anything private goes in one. */
+    match /shares/{shareId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+      function member() {
+        return signedIn() && request.auth.uid in resource.data.memberIds;
+      }
+      // Adding yourself to the list, and touching nothing else. This is how
+      // someone holding the link gets in; they cannot read the share until
+      // the write has gone through.
+      function joiningSelf() {
+        return signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+          && request.resource.data.memberIds.toSet()
+             == resource.data.memberIds.toSet().union([request.auth.uid].toSet());
+      }
+
+      allow read: if member();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid];
+      allow update: if member() || joiningSelf();
+      // Only whoever made it can destroy it. Everyone else leaves instead,
+      // which is an update that takes their own id back out.
+      allow delete: if signedIn() && request.auth.uid == resource.data.ownerId;
+
+      // A shared cookbook's recipes. Same membership, checked against the
+      // parent — a recipe is not readable by anyone the book is not.
+      match /recipes/{recipeId} {
+        allow read, write: if signedIn() && request.auth.uid in
+          get(/databases/$(database)/documents/shares/$(shareId)).data.memberIds;
+      }
+    }
+
+    /* An invitation waiting for someone to sign in and find it.
+
+       Readable only by the address it was sent to: the rule compares against
+       the email on the caller's own Google token, so a query for anyone
+       else's invitations is refused rather than answered emptily. */
+    match /invites/{inviteId} {
+      allow read: if request.auth != null
+        && request.auth.token.email == resource.data.email;
+      allow create: if request.auth != null
+        && request.resource.data.fromId == request.auth.uid;
+      // The recipient tidies it away on accepting; the sender can withdraw it.
+      allow delete: if request.auth != null && (
+        request.auth.token.email == resource.data.email
+        || request.auth.uid == resource.data.fromId
+      );
     }
   }
 }
