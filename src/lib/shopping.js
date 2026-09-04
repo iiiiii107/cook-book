@@ -100,7 +100,10 @@ export function buildList({ plan, recipes = [], standbys = [], dates }) {
  * Obsidian or Reminders — a shopping list is more use in the app you already
  * shop with than in a screen you have to keep this one open to see.
  */
-export function toMarkdown(groups, { dates = [], skipped = new Set(), extras = [] } = {}) {
+export function toMarkdown(
+  groups,
+  { dates = [], skipped = new Set(), extras = [], skippedExtras = new Set() } = {},
+) {
   const lines = ['# Shopping list', ''];
 
   if (dates.length) {
@@ -125,7 +128,10 @@ export function toMarkdown(groups, { dates = [], skipped = new Set(), extras = [
   /* The meals with nothing to buy for them, at the foot. Named exactly as they
      were typed — pluralising "jam sandwich" is a small thing to get wrong and
      "toast & coffees" is worse than leaving it alone. */
-  const kept = extras.filter((extra) => !skipped.has(extra.name));
+  /* Their own set. Ingredients are keyed by a singularised item name, so a
+     quick meal called "Bread" and a bag of bread would share a key and untick
+     each other. */
+  const kept = extras.filter((extra) => !skippedExtras.has(extra.name));
   if (kept.length) {
     lines.push('## Also on the week', '');
     for (const { name, count } of kept) {

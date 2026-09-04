@@ -115,10 +115,21 @@ describe('the list as a file', () => {
   it('leaves out a reminder that was unticked in the review', () => {
     const md = toMarkdown([], {
       extras: [{ name: 'Jam sandwich', count: 2 }, { name: 'Eating out', count: 1 }],
-      skipped: new Set(['Eating out']),
+      skippedExtras: new Set(['Eating out']),
     });
     expect(md).toContain('Jam sandwich');
     expect(md).not.toContain('Eating out');
+  });
+
+  it('keeps the two sets of ticks apart', () => {
+    // Unticking a bag of bread must not also untick a meal called Bread.
+    const groups = [{ id: 'dry', label: 'Dry goods', items: [{ item: 'bread', label: 'bread', amounts: [] }] }];
+    const md = toMarkdown(groups, {
+      extras: [{ name: 'bread', count: 1 }],
+      skipped: new Set(['bread']),
+    });
+    expect(md).not.toContain('- [ ] bread');
+    expect(md).toContain('- [ ] + bread');
   });
 
   it('writes no heading at all when there is nothing to remind you of', () => {

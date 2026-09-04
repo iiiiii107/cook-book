@@ -191,6 +191,7 @@ function addToSlot(date, meal) {
   const standbys = store.state.standbys || [];
   const note = el('input', { type: 'text', placeholder: 'Jam sandwich, or eating out' });
   const keep = el('input', { type: 'checkbox' });
+  const onList = el('input', { type: 'checkbox', checked: true });
 
   const list = el('div', { class: 'pick-list' },
     sortRecipes(recipes, 'alpha').map((recipe) => {
@@ -234,14 +235,17 @@ function addToSlot(date, meal) {
         el('span', { class: 'label', text: 'Or write a meal in' }),
         note,
         el('label', { class: 'check-line' }, [
+          onList,
+          el('span', { text: 'Put it on the shopping list' }),
+        ]),
+        el('label', { class: 'check-line' }, [
           keep,
           el('span', { text: 'Keep it for next time' }),
         ]),
         el('span', {
           class: 'settings-sub',
-          text: 'Kept meals wait in the drawer to drop on any day. You can '
-            + 'give one its ingredients later, and they will join the '
-            + 'shopping list.',
+          text: 'Kept meals wait in the drawer to drop on any day, and can be '
+            + 'given their ingredients later.',
         }),
       ]),
     ]),
@@ -257,10 +261,12 @@ function addToSlot(date, meal) {
             return false;
           }
           if (keep.checked) {
-            const standby = await store.addStandby({ name: text });
+            const standby = await store.addStandby({ name: text, onList: onList.checked });
             store.addToPlan(date, meal, { standbyId: standby.id });
           } else {
-            store.addToPlan(date, meal, { text });
+            // Written in for one day only, so the choice rides on the entry
+            // rather than on a meal in the drawer that will not exist.
+            store.addToPlan(date, meal, { text, onList: onList.checked });
           }
           return true;
         },
@@ -431,6 +437,7 @@ function shoppingList(dates) {
   }
 
   const skipped = new Set();
+  const skippedExtras = new Set();
   const body = el('div', { class: 'list-review' },
     groups.map((group) =>
       el('section', {}, [
@@ -471,8 +478,8 @@ function shoppingList(dates) {
               type: 'checkbox',
               checked: true,
               onChange: (event) => {
-                if (event.target.checked) skipped.delete(extra.name);
-                else skipped.add(extra.name);
+                if (event.target.checked) skippedExtras.delete(extra.name);
+                else skippedExtras.add(extra.name);
               },
             }),
             el('span', { class: 'list-amount', text: extra.count > 1 ? `+ ${extra.count}` : '+' }),
@@ -495,7 +502,10 @@ function shoppingList(dates) {
         label: 'Save the list',
         class: 'btn',
         onClick: () => {
-          download(toMarkdown(groups, { dates, skipped, extras }), listFilename(dates));
+          download(
+            toMarkdown(groups, { dates, skipped, extras, skippedExtras }),
+            listFilename(dates),
+          );
           toast('Shopping list saved.');
         },
       },
