@@ -48,6 +48,10 @@ export const DEFAULT_STATE = {
   books: [],
   recipes: [],
   plan: {},              // 'YYYY-MM-DD' -> { breakfast: [], lunch: [], dinner: [] }
+  // Meals that are not in any cookbook — a jam sandwich, leftovers, the
+  // Tuesday takeaway. Kept beside the plan rather than inside it, because the
+  // point of them is that they come back week after week.
+  standbys: [],          // { id, name, ingredients: [] }
   settings: DEFAULT_SETTINGS,
 };
 
@@ -69,6 +73,7 @@ export function withDefaults(data) {
     books: data.books || [],
     recipes: data.recipes || [],
     plan: data.plan || {},
+    standbys: data.standbys || [],
     settings,
   };
 }

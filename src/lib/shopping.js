@@ -25,31 +25,65 @@ export function entriesBetween(plan = {}, dates = []) {
 }
 
 /**
- * Gather the ingredients of a planned week, merged and sorted into aisles.
+ * What a planned meal is, and what it brings to the list.
  *
- * Entries that are only a note ("leftovers") contribute nothing, which is
- * correct — there is nothing to buy for them.
+ * Three kinds sit in the plan and they are not interchangeable: a recipe from
+ * a cookbook, a standby referred to by id, and something simply written into
+ * the day. The last two may or may not have had ingredients filled in.
  */
-export function buildList({ plan, recipes, dates }) {
-  const byId = new Map(recipes.map((r) => [r.id, r]));
+function resolve(entry, recipesById, standbysById) {
+  if (entry.recipeId) {
+    const recipe = recipesById.get(entry.recipeId);
+    return recipe && { name: recipe.title, ingredients: recipe.ingredients || [], servings: recipe.servings };
+  }
+  if (entry.standbyId) {
+    const standby = standbysById.get(entry.standbyId);
+    return standby && { name: standby.name, ingredients: standby.ingredients || [] };
+  }
+  if (entry.text) return { name: entry.text, ingredients: entry.ingredients || [] };
+  return null;
+}
+
+/**
+ * Gather a planned week into a list you can shop from.
+ *
+ * Returns the aisle `groups`, and `extras`: the planned meals that brought no
+ * ingredients with them. A jam sandwich has nothing to buy attached to it, but
+ * it is still on Tuesday — so rather than disappearing it comes out at the
+ * foot of the list as a reminder to check you have the bread.
+ */
+export function buildList({ plan, recipes = [], standbys = [], dates }) {
+  const recipesById = new Map(recipes.map((r) => [r.id, r]));
+  const standbysById = new Map(standbys.map((s) => [s.id, s]));
   const gathered = [];
+  const counts = new Map();
 
   for (const entry of entriesBetween(plan, dates)) {
-    const recipe = entry.recipeId && byId.get(entry.recipeId);
-    if (!recipe) continue;
+    const meal = resolve(entry, recipesById, standbysById);
+    if (!meal) continue;
+
+    if (!meal.ingredients.length) {
+      // Tallied by name, so a week with the same lunch three times says so
+      // once rather than three times over.
+      counts.set(meal.name, (counts.get(meal.name) || 0) + 1);
+      continue;
+    }
 
     // A planned meal can be cooked for a different number of people than the
     // recipe was written for; the list has to reflect what will be cooked.
-    const factor = entry.servings && recipe.servings
-      ? entry.servings / recipe.servings
+    const factor = entry.servings && meal.servings
+      ? entry.servings / meal.servings
       : 1;
 
-    for (const ingredient of scaleIngredients(recipe.ingredients || [], factor)) {
-      gathered.push({ ...ingredient, recipe: recipe.title });
+    for (const ingredient of scaleIngredients(meal.ingredients, factor)) {
+      gathered.push({ ...ingredient, recipe: meal.name });
     }
   }
 
-  return groupByAisle(mergeIngredients(gathered));
+  return {
+    groups: groupByAisle(mergeIngredients(gathered)),
+    extras: [...counts].map(([name, count]) => ({ name, count })),
+  };
 }
 
 /**
@@ -59,7 +93,7 @@ export function buildList({ plan, recipes, dates }) {
  * Obsidian or Reminders — a shopping list is more use in the app you already
  * shop with than in a screen you have to keep this one open to see.
  */
-export function toMarkdown(groups, { dates = [], skipped = new Set() } = {}) {
+export function toMarkdown(groups, { dates = [], skipped = new Set(), extras = [] } = {}) {
   const lines = ['# Shopping list', ''];
 
   if (dates.length) {
@@ -77,6 +111,18 @@ export function toMarkdown(groups, { dates = [], skipped = new Set() } = {}) {
     for (const entry of items) {
       const amount = formatAmount(entry);
       lines.push(`- [ ] ${[amount, entry.label].filter(Boolean).join(' ')}`);
+    }
+    lines.push('');
+  }
+
+  /* The meals with nothing to buy for them, at the foot. Named exactly as they
+     were typed — pluralising "jam sandwich" is a small thing to get wrong and
+     "toast & coffees" is worse than leaving it alone. */
+  const kept = extras.filter((extra) => !skipped.has(extra.name));
+  if (kept.length) {
+    lines.push('## Also on the week', '');
+    for (const { name, count } of kept) {
+      lines.push(`- [ ] + ${count > 1 ? `${count} ` : ''}${name}`);
     }
     lines.push('');
   }

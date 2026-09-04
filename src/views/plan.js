@@ -4,14 +4,16 @@ import { todayISO, startOfWeek, addDays, formatShort, weekLabel, DAY_FULL, dayOf
 import { MEALS, buildList, toMarkdown, listFilename } from '../lib/shopping.js';
 import { weekStarts } from '../lib/plan.js';
 import { formatAmount } from '../lib/units.js';
-import { sortRecipes } from '../lib/recipe.js';
+import { sortRecipes, parseIngredient, formatIngredient } from '../lib/recipe.js';
 
 /* The planning sheet.
 
    A loose sheet on the desk rather than a page in any one book, because a
    week's meals are drawn from whichever cookbooks you like. Recipes are
    dragged onto it from a drawer of everything you own; anything that is not a
-   recipe can be written straight in ("leftovers", "out").
+   recipe can be written straight in ("leftovers", "out"), and the ones that
+   come round every week — a jam sandwich, the Tuesday takeaway — can be kept
+   in the drawer beside the recipes rather than retyped.
 
    The list that comes off it is a file, not another screen — see shopping.js
    for why. */
@@ -140,6 +142,7 @@ function slot(date, meal, day, mealIndex) {
     if (!raw) return;
     const payload = JSON.parse(raw);
     if (payload.from) store.moveInPlan(payload.from, { date, meal }, payload.id);
+    else if (payload.standbyId) store.addToPlan(date, meal, { standbyId: payload.standbyId });
     else store.addToPlan(date, meal, { recipeId: payload.recipeId });
   });
 
@@ -148,7 +151,8 @@ function slot(date, meal, day, mealIndex) {
 
 function planned(entry, date, meal) {
   const recipe = entry.recipeId && store.recipeById(entry.recipeId);
-  const label = recipe ? recipe.title : entry.text || 'Something';
+  const standby = entry.standbyId && store.standbyById(entry.standbyId);
+  const label = recipe ? recipe.title : standby ? standby.name : entry.text || 'Something';
 
   const node = el('div', {
     class: `plan-entry${recipe ? '' : ' is-note'}`,
@@ -184,7 +188,9 @@ function planned(entry, date, meal) {
 
 function addToSlot(date, meal) {
   const recipes = store.state.recipes;
-  const note = el('input', { type: 'text', placeholder: 'Leftovers, or eating out' });
+  const standbys = store.state.standbys || [];
+  const note = el('input', { type: 'text', placeholder: 'Jam sandwich, or eating out' });
+  const keep = el('input', { type: 'checkbox' });
 
   const list = el('div', { class: 'pick-list' },
     sortRecipes(recipes, 'alpha').map((recipe) => {
@@ -209,23 +215,53 @@ function addToSlot(date, meal) {
       recipes.length
         ? list
         : el('p', { class: 'empty', text: 'No recipes yet to plan with.' }),
+      standbys.length ? el('div', { class: 'pick-list pick-standbys' },
+        standbys.map((standby) =>
+          el('button', {
+            class: 'pick-row',
+            type: 'button',
+            onClick: () => {
+              store.addToPlan(date, meal, { standbyId: standby.id });
+              document.querySelector('.modal-backdrop')?.remove();
+            },
+          }, [
+            el('span', { class: 'pick-name', text: standby.name }),
+            el('span', { class: 'pick-book', text: 'quick meal' }),
+          ]),
+        ),
+      ) : null,
       el('div', { class: 'field' }, [
-        el('span', { class: 'label', text: 'Or just write it down' }),
+        el('span', { class: 'label', text: 'Or write a meal in' }),
         note,
+        el('label', { class: 'check-line' }, [
+          keep,
+          el('span', { text: 'Keep it for next time' }),
+        ]),
+        el('span', {
+          class: 'settings-sub',
+          text: 'Kept meals wait in the drawer to drop on any day. You can '
+            + 'give one its ingredients later, and they will join the '
+            + 'shopping list.',
+        }),
       ]),
     ]),
     actions: [
       { label: 'Cancel' },
       {
-        label: 'Add note',
+        label: 'Add',
         class: 'btn',
-        onClick: () => {
+        onClick: async () => {
           const text = note.value.trim();
           if (!text) {
             toast('Write something first, or pick a recipe.');
             return false;
           }
-          store.addToPlan(date, meal, { text });
+          if (keep.checked) {
+            const standby = await store.addStandby({ name: text });
+            store.addToPlan(date, meal, { standbyId: standby.id });
+          } else {
+            store.addToPlan(date, meal, { text });
+          }
           return true;
         },
       },
@@ -233,31 +269,127 @@ function addToSlot(date, meal) {
   });
 }
 
+/* --- quick meals ------------------------------------------------------------ */
+
+/* Writing one down, or correcting one already written.
+
+   Ingredients are optional and usually left empty — the point of a jam
+   sandwich is that there is nothing to plan about it. Fill them in and it
+   behaves like a recipe on the shopping list; leave them and the meal still
+   reaches the foot of the list as a reminder. */
+function quickMealDialog(existing) {
+  const name = el('input', {
+    type: 'text',
+    placeholder: 'Jam sandwich',
+    value: existing?.name || '',
+  });
+  const lines = el('textarea', {
+    rows: '4',
+    placeholder: '2 slices bread\n1 tbsp jam',
+    text: (existing?.ingredients || []).map(formatIngredient).join('\n'),
+  });
+
+  modal({
+    title: existing ? 'Edit a quick meal' : 'A meal of your own',
+    body: el('div', {}, [
+      el('div', { class: 'field' }, [
+        el('span', { class: 'label', text: 'What it is' }),
+        name,
+      ]),
+      el('div', { class: 'field' }, [
+        el('span', { class: 'label', text: 'Ingredients, if it needs any' }),
+        lines,
+        el('span', {
+          class: 'settings-sub',
+          text: 'One per line. Leave it empty and the meal simply appears at '
+            + 'the foot of the shopping list, so you remember to check.',
+        }),
+      ]),
+    ]),
+    actions: [
+      { label: 'Cancel' },
+      existing && {
+        label: 'Remove',
+        onClick: () => {
+          store.removeStandby(existing.id);
+          toast('Taken out of the drawer.');
+        },
+      },
+      {
+        label: existing ? 'Save' : 'Keep it',
+        class: 'btn',
+        onClick: () => {
+          const title = name.value.trim();
+          if (!title) {
+            toast('Give it a name first.');
+            return false;
+          }
+          const ingredients = lines.value
+            .split('\n')
+            .map((line) => parseIngredient(line))
+            .filter(Boolean);
+
+          if (existing) store.updateStandby(existing.id, { name: title, ingredients });
+          else store.addStandby({ name: title, ingredients });
+          return true;
+        },
+      },
+    ].filter(Boolean),
+  });
+}
+
 /* --- the drawer of recipes -------------------------------------------------- */
 
 function recipeDrawer() {
   const recipes = store.state.recipes;
-  if (!recipes.length) return el('p', { class: 'empty on-desk', text: 'Write a recipe first and it will appear here to plan with.' });
+  const standbys = store.state.standbys || [];
 
-  const drawer = el('div', { class: 'plan-drawer' }, [
+  /* Both rails hold the same kind of thing — something to drop on a day — so
+     they drag identically. Only the payload differs. */
+  const chip = (label, payload, extra = {}) => {
+    const node = el('div', {
+      class: 'drawer-chip',
+      draggable: 'true',
+      title: label,
+      text: label,
+      ...extra,
+    });
+    node.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('application/json', JSON.stringify(payload));
+      event.dataTransfer.effectAllowed = 'copy';
+    });
+    return node;
+  };
+
+  return el('div', { class: 'plan-drawer' }, [
     el('span', { class: 'label', text: 'Drag onto the week' }),
-    el('div', { class: 'drawer-rail' },
-      sortRecipes(recipes, 'alpha').map((recipe) => {
-        const chip = el('div', {
-          class: 'drawer-chip',
-          draggable: 'true',
-          title: recipe.title,
-          text: recipe.title,
-        });
-        chip.addEventListener('dragstart', (event) => {
-          event.dataTransfer.setData('application/json', JSON.stringify({ recipeId: recipe.id }));
-          event.dataTransfer.effectAllowed = 'copy';
-        });
-        return chip;
+    recipes.length
+      ? el('div', { class: 'drawer-rail' },
+        sortRecipes(recipes, 'alpha').map((recipe) =>
+          chip(recipe.title, { recipeId: recipe.id })),
+      )
+      : el('p', { class: 'empty on-desk', text: 'Write a recipe and it will appear here to plan with.' }),
+
+    el('div', { class: 'drawer-rail drawer-quick' }, [
+      ...standbys.map((standby) =>
+        // Dragging plans it; clicking opens it, which is the only way to give
+        // it ingredients after the fact. A plain click never starts a native
+        // drag, so the two gestures do not fight.
+        chip(standby.name, { standbyId: standby.id }, {
+          class: 'drawer-chip is-quick',
+          title: `${standby.name} — drag onto a day, or click to change it`,
+          onClick: () => quickMealDialog(standby),
+        }),
+      ),
+      el('button', {
+        class: 'drawer-new',
+        type: 'button',
+        text: '+ A meal of your own',
+        title: 'Something that is not in a cookbook',
+        onClick: () => quickMealDialog(),
       }),
-    ),
+    ]),
   ]);
-  return drawer;
 }
 
 /* --- the shopping list ------------------------------------------------------ */
@@ -265,12 +397,17 @@ function recipeDrawer() {
 /* One screen before the file: the grouped list with everything ticked, so the
    cupboard can be taken into account before anything is downloaded. */
 function shoppingList(dates) {
-  const groups = buildList({ plan: store.state.plan, recipes: store.state.recipes, dates });
+  const { groups, extras } = buildList({
+    plan: store.state.plan,
+    recipes: store.state.recipes,
+    standbys: store.state.standbys,
+    dates,
+  });
 
-  if (!groups.length) {
+  if (!groups.length && !extras.length) {
     modal({
       title: 'Nothing to buy',
-      body: el('p', { class: 'empty', text: 'Put some recipes on the week first.' }),
+      body: el('p', { class: 'empty', text: 'Put some meals on the week first.' }),
       actions: [{ label: 'Right' }],
     });
     return;
@@ -303,6 +440,32 @@ function shoppingList(dates) {
     ),
   );
 
+  /* The meals with nothing to buy for them. They are not shopping, so they sit
+     apart at the foot — but they are tickable like everything else, because
+     "we are eating out on Thursday" is exactly the sort of thing you want to
+     take off the list you carry to the shop. */
+  if (extras.length) {
+    body.append(
+      el('section', { class: 'list-extras' }, [
+        el('h4', { class: 'label', text: 'Also on the week' }),
+        ...extras.map((extra) =>
+          el('label', { class: 'list-row' }, [
+            el('input', {
+              type: 'checkbox',
+              checked: true,
+              onChange: (event) => {
+                if (event.target.checked) skipped.delete(extra.name);
+                else skipped.add(extra.name);
+              },
+            }),
+            el('span', { class: 'list-amount', text: extra.count > 1 ? `+ ${extra.count}` : '+' }),
+            el('span', { class: 'list-item', text: extra.name }),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   modal({
     title: 'Shopping list',
     body: el('div', {}, [
@@ -315,7 +478,7 @@ function shoppingList(dates) {
         label: 'Save the list',
         class: 'btn',
         onClick: () => {
-          download(toMarkdown(groups, { dates, skipped }), listFilename(dates));
+          download(toMarkdown(groups, { dates, skipped, extras }), listFilename(dates));
           toast('Shopping list saved.');
         },
       },

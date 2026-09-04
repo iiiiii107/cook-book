@@ -138,6 +138,51 @@ class Store extends EventTarget {
    * @param {string} meal breakfast | lunch | dinner
    * @param {{recipeId?: string, text?: string, servings?: number}} entry
    */
+  // ---- standbys ----------------------------------------------------------
+  /* Meals with no recipe behind them. They are referred to from the plan by
+     id rather than copied into it, so correcting the name — or adding the
+     ingredients you meant to add — reaches every day it is already on. */
+
+  standbyById(id) {
+    return this.state.standbys?.find((s) => s.id === id);
+  }
+
+  addStandby({ name, ingredients = [] }) {
+    if (!this.state.standbys) this.state.standbys = [];
+    const standby = { id: uid(), name: String(name).trim(), ingredients };
+    this.state.standbys.push(standby);
+    return this.persist().then(() => standby);
+  }
+
+  updateStandby(id, patch) {
+    const standby = this.standbyById(id);
+    if (!standby) return Promise.resolve();
+    Object.assign(standby, patch);
+    return this.persist();
+  }
+
+  /* Removing one leaves the days it was planned on pointing at nothing, so
+     they are turned back into plain written-in meals rather than vanishing —
+     deleting a standby should tidy the drawer, not edit last Tuesday. */
+  removeStandby(id) {
+    const standby = this.standbyById(id);
+    if (!standby) return Promise.resolve();
+
+    for (const day of Object.values(this.state.plan || {})) {
+      for (const entries of Object.values(day)) {
+        for (const entry of entries) {
+          if (entry.standbyId !== id) continue;
+          delete entry.standbyId;
+          entry.text = standby.name;
+          if (standby.ingredients?.length) entry.ingredients = standby.ingredients;
+        }
+      }
+    }
+
+    this.state.standbys = this.state.standbys.filter((s) => s.id !== id);
+    return this.persist();
+  }
+
   addToPlan(date, meal, entry) {
     if (!this.state.plan) this.state.plan = {};
     if (!this.state.plan[date]) this.state.plan[date] = {};
