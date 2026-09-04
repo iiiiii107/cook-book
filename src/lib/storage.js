@@ -18,6 +18,12 @@ export const DEFAULT_SETTINGS = {
   profile: { name: '', email: '' },
   theme: 'system',       // system | light | dark
   light: 'on',           // on | off (blinds closed) | bulb
+  // The sun across the desk, and the cord that changes it, are separate
+  // things. The shaft is the look of the app and stays on; the cord is a
+  // conceit, and it starts out of the way — most people meet the app without
+  // wanting to work out what a dangling string does.
+  lighting: true,
+  lightSwitch: false,
   wood: 'oak',
   palette: {},           // colour overrides, written onto <html> at boot
   fontDisplay: 'garamond',

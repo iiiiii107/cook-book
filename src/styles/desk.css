@@ -62,6 +62,13 @@
   opacity: var(--light-strength);
   mix-blend-mode: var(--light-blend);
   transition: opacity .7s ease;
+  /* Its own compositor layer. A fixed, blended overlay has to be re-blended
+     against whatever scrolled underneath it, and without a layer of its own
+     that work lands in the middle of the scroll frame — which is what made
+     the shaft shimmer and smear on other people's machines. */
+  transform: translateZ(0);
+  will-change: opacity;
+  backface-visibility: hidden;
   /* The wash: the light itself, with no structure in it. */
   background: linear-gradient(
     var(--light-angle),
@@ -70,8 +77,11 @@
     var(--light-tint) 50%,
     transparent 72%
   );
-  animation: drift 40s ease-in-out infinite alternate;
 }
+
+/* Nothing to light. Not opacity 0 — the layer would still be composited and
+   still be blended on every frame, which is the expensive part. */
+:root[data-light='none'] .lighting { display: none; }
 
 /* The window that light is coming through.
 
@@ -133,14 +143,8 @@
     color-mix(in srgb, var(--light-tint) 42%, transparent) 30%,
     transparent 70%
   );
-  animation: none;
 }
 :root[data-light='bulb'] .lighting::before { display: none; }
-
-@keyframes drift {
-  from { transform: translate3d(-1%, -.7%, 0) scale(1.02); }
-  to   { transform: translate3d(1%, .7%, 0) scale(1.04); }
-}
 
 /* --- the switch: a pull-cord by day, a lamp by night --------------------- */
 /* Small and tucked into the corner. It should be findable, not announced. */

@@ -76,7 +76,14 @@ export function applyTheme(settings = {}) {
     delete root.dataset.theme;
   }
 
-  root.dataset.light = settings.light || 'on';
+  /* Three ways the desk can be lit, and only one of them is the stored
+     `light` value: with the shaft turned off there is no lighting layer at
+     all, and with the cord hidden there is no way to have chosen anything but
+     the plain window — so an old "shutters closed" must not leave someone in
+     the dark with nothing to pull. */
+  root.dataset.light = settings.lighting === false
+    ? 'none'
+    : settings.lightSwitch ? (settings.light || 'on') : 'on';
   root.dataset.wood = settings.wood || 'oak';
 
   // Palette overrides. Clearing a key has to remove the property outright,

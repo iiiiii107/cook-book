@@ -54,7 +54,7 @@ export function renderSettings(host) {
 
   // --- light ---------------------------------------------------------------
   sheet.append(
-    card('Light', 'Day is sun through the window; night is moonlight. The cord and the lamp on the desk do the same thing.', [
+    card('Light', 'Day is sun through the window; night is moonlight.', [
       row('Time of day', segmented(
         [
           { id: 'system', label: 'System' },
@@ -64,7 +64,31 @@ export function renderSettings(host) {
         settings.theme,
         (id) => set({ theme: id }),
       )),
-      row('The light itself', segmented(
+      row('Sun across the desk', segmented(
+        [{ id: 'yes', label: 'On' }, { id: 'no', label: 'Off' }],
+        settings.lighting === false ? 'no' : 'yes',
+        (id) => set({ lighting: id === 'yes' }),
+      )),
+      el('p', {
+        class: 'settings-sub',
+        text: 'The shaft of light and the window shadow. Turn it off if the '
+          + 'screen judders when you scroll — it is the one part of the desk '
+          + 'that costs an older machine anything.',
+      }),
+      // Each row only appears once the one above makes it mean something: a
+      // cord changes the light, and there is no light to change with the sun
+      // off — a control that does nothing is worse than one that is absent.
+      settings.lighting !== false && row('The pull-cord', segmented(
+        [{ id: 'yes', label: 'On' }, { id: 'no', label: 'Off' }],
+        settings.lightSwitch ? 'yes' : 'no',
+        (id) => set({ lightSwitch: id === 'yes' }),
+      )),
+      settings.lighting !== false && el('p', {
+        class: 'settings-sub',
+        text: 'A cord hangs at the edge of the desk. Pull it to close the '
+          + 'shutters by day, or to swap moonlight for a lamp at night.',
+      }),
+      settings.lighting !== false && settings.lightSwitch && row('The light itself', segmented(
         [
           { id: 'on', label: 'Window' },
           { id: 'off', label: 'Shutters closed' },

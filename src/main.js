@@ -40,7 +40,12 @@ function chrome() {
   app.append(lightSwitch());
 }
 
-/** A blind pull-cord by day, a lamp by night. Same state, two gestures. */
+/* A blind pull-cord by day, a lamp by night. Same state, two gestures.
+
+   It is off unless asked for. The cord is the sort of thing you have to
+   discover, and someone opening the app for the first time should not have to
+   work out what the dangling string above the desk is for — nor find they have
+   pulled it by accident and cannot see. Settings turns it on. */
 function lightSwitch() {
   const host = el('button', { class: 'light-switch', type: 'button' });
 
@@ -49,6 +54,10 @@ function lightSwitch() {
     // the moment it has.
     if (!store.state) return;
     const { settings } = store.state;
+
+    host.hidden = !settings.lightSwitch || settings.lighting === false;
+    if (host.hidden) return;
+
     const night =
       settings.theme === 'dark' ||
       (settings.theme === 'system' &&
