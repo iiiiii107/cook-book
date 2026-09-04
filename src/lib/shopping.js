@@ -38,9 +38,16 @@ function resolve(entry, recipesById, standbysById) {
   }
   if (entry.standbyId) {
     const standby = standbysById.get(entry.standbyId);
-    return standby && { name: standby.name, ingredients: standby.ingredients || [] };
+    // Some meals have no business on a shopping list at all. Eating out is
+    // planned, and there is nothing to buy or to check the cupboard for — a
+    // line saying so would be noise on the one list you carry to the shop.
+    if (!standby || standby.onList === false) return null;
+    return { name: standby.name, ingredients: standby.ingredients || [] };
   }
-  if (entry.text) return { name: entry.text, ingredients: entry.ingredients || [] };
+  if (entry.text) {
+    if (entry.onList === false) return null;
+    return { name: entry.text, ingredients: entry.ingredients || [] };
+  }
   return null;
 }
 

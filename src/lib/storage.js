@@ -43,6 +43,22 @@ export const DEFAULT_SETTINGS = {
   },
 };
 
+/* The two meals everybody starts with.
+
+   Both are the same idea: an evening where the cooking is somebody else's
+   problem. They are on the sheet so a day is not left looking unplanned, and
+   they are off the shopping list because there is nothing to buy for them —
+   which is the whole reason they are worth providing rather than leaving
+   everyone to type them in.
+
+   Given once and then owned outright: rename them, add ingredients, delete
+   them. Fixed ids so two devices seeding at the same moment collide into one
+   rather than leaving a pair of duplicates behind. */
+export const BUILT_IN_STANDBYS = [
+  { id: 'eating-out', name: 'Eating out', ingredients: [], onList: false },
+  { id: 'take-out', name: 'Take out', ingredients: [], onList: false },
+];
+
 export const DEFAULT_STATE = {
   version: 1,
   books: [],
@@ -51,7 +67,10 @@ export const DEFAULT_STATE = {
   // Meals that are not in any cookbook — a jam sandwich, leftovers, the
   // Tuesday takeaway. Kept beside the plan rather than inside it, because the
   // point of them is that they come back week after week.
-  standbys: [],          // { id, name, ingredients: [] }
+  standbys: [],          // { id, name, ingredients: [], onList }
+  // Whether the two the app provides have been handed over yet. Once, not on
+  // every load — deleting one has to mean it stays deleted.
+  standbysSeeded: false,
   settings: DEFAULT_SETTINGS,
 };
 
@@ -60,6 +79,26 @@ export function clone(value) {
 }
 
 /** Fills in anything a stored payload predates, so old saves keep working. */
+/* The provided meals, added the first time and never again, and never twice.
+
+   Keyed by id so a state that already carries one — restored from a backup,
+   or arrived from another device mid-seed — keeps the version it has rather
+   than gaining a second copy under the same name. */
+function seedStandbys(data) {
+  const own = data.standbys || [];
+  if (data.standbysSeeded) return own;
+
+  const mine = new Map(own.map((s) => [s.id, s]));
+  const builtInIds = new Set(BUILT_IN_STANDBYS.map((s) => s.id));
+
+  // A copy already in hand wins over the one being offered, so an edit made
+  // before the state was marked seeded is not undone by the seeding.
+  return [
+    ...BUILT_IN_STANDBYS.map((s) => mine.get(s.id) || s),
+    ...own.filter((s) => !builtInIds.has(s.id)),
+  ];
+}
+
 export function withDefaults(data) {
   const settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
   settings.toolStyles = { ...DEFAULT_SETTINGS.toolStyles, ...(settings.toolStyles || {}) };
@@ -73,7 +112,8 @@ export function withDefaults(data) {
     books: data.books || [],
     recipes: data.recipes || [],
     plan: data.plan || {},
-    standbys: data.standbys || [],
+    standbys: seedStandbys(data),
+    standbysSeeded: true,
     settings,
   };
 }
@@ -81,12 +121,16 @@ export function withDefaults(data) {
 export function createLocalStorage() {
   const listeners = new Set();
 
+  /* Everything goes through withDefaults, including an empty desk. Handing a
+     first-time visitor a bare clone of DEFAULT_STATE looks equivalent and is
+     not: it skips the normaliser, so anything set up there — the two meals the
+     app provides, and every future default — reached returning users only. */
   function read() {
     try {
       const raw = localStorage.getItem(KEY);
-      return raw ? withDefaults(JSON.parse(raw)) : clone(DEFAULT_STATE);
+      return withDefaults(raw ? JSON.parse(raw) : {});
     } catch {
-      return clone(DEFAULT_STATE);
+      return withDefaults({});
     }
   }
 

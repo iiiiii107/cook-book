@@ -288,6 +288,10 @@ function quickMealDialog(existing) {
     placeholder: '2 slices bread\n1 tbsp jam',
     text: (existing?.ingredients || []).map(formatIngredient).join('\n'),
   });
+  const onList = el('input', {
+    type: 'checkbox',
+    checked: existing ? existing.onList !== false : true,
+  });
 
   modal({
     title: existing ? 'Edit a quick meal' : 'A meal of your own',
@@ -301,8 +305,20 @@ function quickMealDialog(existing) {
         lines,
         el('span', {
           class: 'settings-sub',
-          text: 'One per line. Leave it empty and the meal simply appears at '
-            + 'the foot of the shopping list, so you remember to check.',
+          text: 'One per line. Leave it empty and the meal still reaches the '
+            + 'foot of the shopping list, so you remember to check.',
+        }),
+      ]),
+      el('div', { class: 'field' }, [
+        el('label', { class: 'check-line' }, [
+          onList,
+          el('span', { text: 'Put it on the shopping list' }),
+        ]),
+        el('span', {
+          class: 'settings-sub',
+          text: 'Untick for a meal there is nothing to buy for — eating out, '
+            + 'or a takeaway. It still goes on the week; it just stays off '
+            + 'the list.',
         }),
       ]),
     ]),
@@ -329,8 +345,9 @@ function quickMealDialog(existing) {
             .map((line) => parseIngredient(line))
             .filter(Boolean);
 
-          if (existing) store.updateStandby(existing.id, { name: title, ingredients });
-          else store.addStandby({ name: title, ingredients });
+          const patch = { name: title, ingredients, onList: onList.checked };
+          if (existing) store.updateStandby(existing.id, patch);
+          else store.addStandby(patch);
           return true;
         },
       },

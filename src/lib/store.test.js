@@ -29,6 +29,21 @@ describe('taking a quick meal out of the drawer', () => {
     expect(store.state.plan['2026-09-01'].lunch[0].text).toBe('Eating out');
   });
 
+  it('remembers that it did not belong on the shopping list', async () => {
+    const { store } = await import('./store.js');
+
+    store.state = {
+      books: [], recipes: [], settings: {},
+      standbys: [{ id: 'eating-out', name: 'Eating out', ingredients: [], onList: false }],
+      plan: { '2026-08-31': { dinner: [{ id: 'a', standbyId: 'eating-out' }] } },
+    };
+    store.persist = async () => {};
+
+    await store.removeStandby('eating-out');
+    // Otherwise deleting it would put "eating out" on next week's shopping.
+    expect(store.state.plan['2026-08-31'].dinner[0].onList).toBe(false);
+  });
+
   it('keeps the ingredients it had, so the list does not quietly change', async () => {
     const { store } = await import('./store.js');
     const ingredients = [{ qty: 2, unit: 'slices', item: 'bread' }];

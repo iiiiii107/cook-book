@@ -147,9 +147,9 @@ class Store extends EventTarget {
     return this.state.standbys?.find((s) => s.id === id);
   }
 
-  addStandby({ name, ingredients = [] }) {
+  addStandby({ name, ingredients = [], onList = true }) {
     if (!this.state.standbys) this.state.standbys = [];
-    const standby = { id: uid(), name: String(name).trim(), ingredients };
+    const standby = { id: uid(), name: String(name).trim(), ingredients, onList };
     this.state.standbys.push(standby);
     return this.persist().then(() => standby);
   }
@@ -175,6 +175,9 @@ class Store extends EventTarget {
           delete entry.standbyId;
           entry.text = standby.name;
           if (standby.ingredients?.length) entry.ingredients = standby.ingredients;
+          // Including whether it belonged on the list. Deleting "Eating out"
+          // should not put it on next week's shopping.
+          if (standby.onList === false) entry.onList = false;
         }
       }
     }

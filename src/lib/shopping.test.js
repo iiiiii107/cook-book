@@ -17,6 +17,10 @@ const recipes = [
 const standbys = [
   { id: 's1', name: 'Jam sandwich', ingredients: [] },
   { id: 's2', name: 'Cheese toastie', ingredients: [ing(2, 'slices', 'bread'), ing(40, 'g', 'cheese')] },
+  { id: 's3', name: 'Eating out', ingredients: [], onList: false },
+  // Ingredients and off the list at once: the flag has to win, or ticking the
+  // box would only ever hide the reminder and still send you shopping.
+  { id: 's4', name: 'Chip shop', ingredients: [ing(1, '', 'batter')], onList: false },
 ];
 
 const dates = ['2026-08-31', '2026-09-01', '2026-09-02'];
@@ -69,6 +73,26 @@ describe('a week turned into a shopping list', () => {
     // Merged amounts are kept in the family's base unit, not as typed.
     const oats = groups.flatMap((g) => g.items).find((i) => i.label === 'oats');
     expect(oats.amounts[0].base).toBe(160);
+  });
+
+  it('leaves out a meal there is nothing to buy for, entirely', () => {
+    const { groups, extras } = list(planOf([{ id: 'a', standbyId: 's3' }]));
+    expect(groups).toEqual([]);
+    // Not even as a reminder — eating out is planned, not shopped for.
+    expect(extras).toEqual([]);
+  });
+
+  it('drops its ingredients too, not just its name', () => {
+    const { groups, extras } = list(planOf([{ id: 'a', standbyId: 's4' }]));
+    expect(groups).toEqual([]);
+    expect(extras).toEqual([]);
+  });
+
+  it('carries the flag onto a meal written straight into the day', () => {
+    // Which is what a deleted quick meal turns into, so it must not reappear
+    // on the shopping list on its way out of the drawer.
+    const { extras } = list(planOf([{ id: 'a', text: 'Eating out', onList: false }]));
+    expect(extras).toEqual([]);
   });
 
   it('ignores a day outside the week being shopped for', () => {
